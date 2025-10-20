@@ -1,74 +1,158 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-    provider = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-    provider = "postgresql"
-    // NOTE: When using mysql or sqlserver, uncomment the @db.Text annotations in model Account below
-    // Further reading:
-    // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
-    // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
-    url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-model Post {
-    id        Int      @id @default(autoincrement())
-    name      String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-
-    createdBy   User   @relation(fields: [createdById], references: [id])
-    createdById String
-
-    @@index([name])
-}
-
-// Necessary for Next auth
 model Account {
-    id                       String  @id @default(cuid())
-    userId                   String
-    type                     String
-    provider                 String
-    providerAccountId        String
-    refresh_token            String? // @db.Text
-    access_token             String? // @db.Text
-    expires_at               Int?
-    token_type               String?
-    scope                    String?
-    id_token                 String? // @db.Text
-    session_state            String?
-    user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-    refresh_token_expires_in Int?
+  id                       String  @id @default(cuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String?
+  access_token             String?
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String?
+  session_state            String?
+  refresh_token_expires_in Int?
+  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    @@unique([provider, providerAccountId])
+  @@unique([provider, providerAccountId])
 }
 
 model Session {
-    id           String   @id @default(cuid())
-    sessionToken String   @unique
-    userId       String
-    expires      DateTime
-    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model User {
-    id            String    @id @default(cuid())
-    name          String?
-    email         String?   @unique
-    emailVerified DateTime?
-    image         String?
-    accounts      Account[]
-    sessions      Session[]
-    posts         Post[]
+  id                       String                  @id @default(cuid())
+  name                     String
+  email                    String                  @unique
+  emailVerified            DateTime?
+  image                    String?
+  whatsapp                 String?
+  password                 String?
+  role                     Role                    @default(USER)
+  createdAt                DateTime                @default(now()) @map("created_at")
+  updatedAt                DateTime                @updatedAt @map("updated_at")
+  accounts                 Account[]
+  sessions                 Session[]
+  recurrenceConfigsCreated RecurrenceConfig[]
+  recurrenceParticipants   RecurrenceParticipant[]
+  scheduleParticipants     ScheduleParticipant[]
+  schedulesCreated         Schedule[]
+
+  @@map("users")
 }
 
 model VerificationToken {
-    identifier String
-    token      String   @unique
-    expires    DateTime
+  identifier String
+  token      String   @unique
+  expires    DateTime
 
-    @@unique([identifier, token])
+  @@unique([identifier, token])
+}
+
+model Schedule {
+  id                String                @id @default(cuid())
+  date              DateTime              @db.Date
+  time              DateTime              @db.Time(6)
+  status            ScheduleStatus        @default(PENDING)
+  notes             String?
+  recurrenceType    RecurrenceType        @default(SINGLE) @map("recurrence_type")
+  recurrenceGroupId String?               @map("recurrence_group_id")
+  createdById       String                @map("created_by_id")
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+  participants      ScheduleParticipant[]
+  createdBy         User                  @relation(fields: [createdById], references: [id])
+  recurrenceConfig  RecurrenceConfig?     @relation(fields: [recurrenceGroupId], references: [id])
+
+  @@index([date])
+  @@index([recurrenceGroupId])
+  @@map("schedules")
+}
+
+model RecurrenceConfig {
+  id           String                  @id @default(cuid())
+  frequency    RecurrenceFrequency
+  dayOfWeek    Int?                    @map("day_of_week")
+  weekOfMonth  Int?                    @map("week_of_month")
+  time         DateTime                @db.Time(6)
+  startDate    DateTime                @map("start_date") @db.Date
+  endDate      DateTime                @map("end_date") @db.Date
+  notes        String?
+  createdById  String                  @map("created_by_id")
+  createdAt    DateTime                @default(now()) @map("created_at")
+  updatedAt    DateTime                @updatedAt @map("updated_at")
+  createdBy    User                    @relation(fields: [createdById], references: [id])
+  participants RecurrenceParticipant[]
+  schedules    Schedule[]
+
+  @@map("recurrence_configs")
+}
+
+model RecurrenceParticipant {
+  id                 String           @id @default(cuid())
+  recurrenceConfigId String           @map("recurrence_config_id")
+  participantId      String           @map("participant_id")
+  instrument         String
+  createdAt          DateTime         @default(now()) @map("created_at")
+  participant        User             @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  recurrenceConfig   RecurrenceConfig @relation(fields: [recurrenceConfigId], references: [id], onDelete: Cascade)
+
+  @@unique([recurrenceConfigId, participantId])
+  @@map("recurrence_participants")
+}
+
+model ScheduleParticipant {
+  id                 String    @id @default(cuid())
+  scheduleId         String    @map("schedule_id")
+  participantId      String    @map("participant_id")
+  instrument         String
+  confirmed          Boolean?
+  justification      String?
+  notificationSent   Boolean   @default(false) @map("notification_sent")
+  notificationSentAt DateTime? @map("notification_sent_at")
+  confirmedAt        DateTime? @map("confirmed_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  participant        User      @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  schedule           Schedule  @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, participantId])
+  @@index([scheduleId])
+  @@index([participantId])
+  @@map("schedule_participants")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum ScheduleStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum RecurrenceType {
+  SINGLE
+  RECURRING
+}
+
+enum RecurrenceFrequency {
+  WEEKLY
+  MONTHLY
 }
