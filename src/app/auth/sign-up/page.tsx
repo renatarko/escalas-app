@@ -3,9 +3,11 @@ import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function SignIn() {
+export default function SignUp() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -41,11 +43,26 @@ export default function SignIn() {
       <div className="w-full max-w-md space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Faça login na sua conta
+            Crie sua conta
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="-space-y-px rounded-md shadow-sm">
+            <div>
+              <label htmlFor="name" className="sr-only">
+                Name
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                required
+                className="relative block w-full appearance-none rounded-none rounded-t-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-indigo-500 focus:ring-indigo-500 focus:outline-none sm:text-sm"
+                placeholder="Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
             <div>
               <label htmlFor="email" className="sr-only">
                 Email
@@ -59,6 +76,21 @@ export default function SignIn() {
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="whatsapp" className="sr-only">
+                WhatsApp
+              </label>
+              <input
+                id="whatsapp"
+                name="whatsapp"
+                type="text"
+                required
+                className="relative block w-full appearance-none rounded-none rounded-t-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-indigo-500 focus:ring-indigo-500 focus:outline-none sm:text-sm"
+                placeholder="Whatsapp"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
               />
             </div>
             <div>

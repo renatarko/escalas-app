@@ -1,9 +1,16 @@
+import { Tab } from "@/app/_components/tab";
 import { auth } from "@/server/auth";
 import { HydrateClient } from "@/trpc/server";
-import { Tab } from "./_components/tab";
 import { Calendar } from "lucide-react";
 
-export default async function Home() {
+export default async function Admin() {
+  const session = await auth();
+  console.log({ session });
+
+  if (!session?.user.role || session.user.role !== "ADMIN") {
+    return <div>nao tem session</div>;
+  }
+
   return (
     <HydrateClient>
       <main className="container mx-auto flex min-h-screen flex-col items-center justify-center space-y-8 py-12">
@@ -15,7 +22,7 @@ export default async function Home() {
           <h2>Gerencie ensaios e participantes de forma automática</h2>
         </div>
 
-        {/* <Tab /> */}
+        <Tab />
       </main>
     </HydrateClient>
   );
