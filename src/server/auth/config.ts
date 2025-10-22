@@ -1,9 +1,13 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { type DefaultSession, type NextAuthConfig } from "next-auth";
+import {
+  CredentialsSignin,
+  type DefaultSession,
+  type NextAuthConfig,
+} from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
-
+import { type Adapter } from "next-auth/adapters";
 import { db } from "@/server/db";
 
 /**
@@ -12,20 +16,20 @@ import { db } from "@/server/db";
  *
  * @see https://next-auth.js.org/getting-started/typescript#module-augmentation
  */
-// declare module "next-auth" {
-//   interface Session extends DefaultSession {
-//     user: {
-//       id: string;
-//       // ...other properties
-//       role: "USER" | "ADMIN";
-//     } & DefaultSession["user"];
-//   }
+declare module "next-auth" {
+  interface Session extends DefaultSession {
+    user: {
+      id: string;
+      // ...other properties
+      role: "USER" | "ADMIN";
+    } & DefaultSession["user"];
+  }
 
-//   // interface User {
-//   //   // ...other properties
-//   //   // role: UserRole;
-//   // }
-// }
+  interface User {
+    // ...other properties
+    role: "USER" | "ADMIN";
+  }
+}
 
 /**
  * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
@@ -43,49 +47,29 @@ export const authConfig: NextAuthConfig = {
       },
 
       async authorize(credentials) {
-        // Não permite login se não há credenciais
         if (!credentials?.email || !credentials?.password) {
-          console.log("No credentials provided");
           return null;
         }
 
-        console.log({ credentials });
-
-        // Busca usuário no banco
         const user = await db.user.findUnique({
           where: { email: credentials.email },
         });
 
-        console.log("nao encontrou user no banco?", !user);
+        console.log("nao encontrou user no banco?", user);
 
         // Se usuário não existe ou não tem senha, rejeita
         if (!user) {
-          console.log("User not found, creating...");
-          const newUser = await db.user.create({
-            data: {
-              name: "",
-              email: credentials.email as string,
-              password: await bcrypt.hash(credentials.password as string, 10),
-              whatsapp: "",
-              role: "USER",
-            },
-          });
-
-          console.log("User created:", newUser);
-          return {
-            id: newUser.id,
-            name: newUser.name,
-            email: newUser.email,
-            role: newUser.role,
-            image: newUser.image ?? null,
-          };
+          console.log("User not found");
+          return null;
         }
 
         // Verifica senha
         if (!user.password) {
           console.log("User has no password set");
           // usuário existe mas não tem senha (ex.: criado via OAuth) — rejeita login por credenciais
-          return null;
+          throw new Error(
+            "Usuário registrado via outro provedor. Use o login correspondente.",
+          );
         }
 
         const isPasswordValid = await bcrypt.compare(
@@ -95,7 +79,7 @@ export const authConfig: NextAuthConfig = {
 
         if (!isPasswordValid) {
           console.log("Invalid password");
-          return null;
+          throw new Error("Senha inválida");
         }
 
         console.log("User authenticated:", user.email);
@@ -122,38 +106,48 @@ export const authConfig: NextAuthConfig = {
     strategy: "jwt",
     maxAge: 60 * 24 * 60 * 60, // 60 days
   },
-  adapter: PrismaAdapter(db),
-  // Ative debug para mais logs
+  adapter: PrismaAdapter(db) as Adapter,
   debug: process.env.NODE_ENV === "development",
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
+        token = {
+          ...token,
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+          role: user.role,
+        };
+        return token;
+      }
+      if (token?.email) {
+        const dbUser = await db.user.findUnique({
+          where: { email: token.email },
+        });
+        if (dbUser) {
+          token = {
+            ...token,
+            id: dbUser.id,
+            name: dbUser.name,
+            email: dbUser.email,
+            image: dbUser.image,
+            role: dbUser.role,
+          };
+        }
       }
       return token;
     },
-    session: async ({ session, token }) => {
-      const modifiedSession = { ...session };
-      if (token) {
-        if (!session.user) modifiedSession.user = {};
-        modifiedSession.user.id = token.id;
-        modifiedSession.user.name = token.name;
-        modifiedSession.user.email = token.email;
-        modifiedSession.user.image = token.image;
-        modifiedSession.user.role = token.role;
-      }
-      return modifiedSession;
+    async session({ session, token }) {
+      return {
+        ...session,
+        user: {
+          ...session.user,
+          id: token.id as string, // Adiciona o id do token
+          role: token.role as "USER" | "ADMIN", // Adiciona o role do token
+        },
+      };
     },
-    signIn: async () => {
-      return true;
-    },
-    // session: ({ session, user }) => ({
-    //   ...session,
-    //   user: {
-    //     ...session.user,
-    //     id: user.id,
-    //   },
-    // }),
   },
   pages: {
     signIn: "/auth/sign-in",

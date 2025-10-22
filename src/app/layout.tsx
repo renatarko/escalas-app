@@ -4,6 +4,7 @@ import { type Metadata } from "next";
 import { Poppins } from "next/font/google";
 
 import { TRPCReactProvider } from "@/trpc/react";
+import { Toaster } from "./_components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "Escalas App",
@@ -24,6 +25,7 @@ export default function RootLayout({
     <html lang="en" className={`${poppins.variable}`}>
       <body>
         <TRPCReactProvider>{children}</TRPCReactProvider>
+        <Toaster />
       </body>
     </html>
   );

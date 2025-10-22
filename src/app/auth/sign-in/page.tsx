@@ -2,10 +2,36 @@
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/app/_components/ui/form";
+import { Input } from "@/app/_components/ui/input";
+import { Button } from "@/app/_components/ui/button";
+import { Eye, EyeClosed } from "lucide-react";
+import Link from "next/link";
+import z from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
+
+const formSchema = z.object({
+  email: z
+    .string({ required_error: "E-mail obrigatório para cadastro" })
+    .email({ message: "Preencha com e-mail válido" }),
+
+  password: z
+    .string({ required_error: "Informe uma senha para continuar" })
+    .min(6, "A senha deve ter no mínimo 6 caracteres"),
+});
+
+type FormData = z.infer<typeof formSchema>;
 
 export default function SignIn() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -13,104 +39,118 @@ export default function SignIn() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/admin";
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const form = useForm({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = async (data: FormData) => {
     setLoading(true);
     setError("");
+    const toastId = toast.loading("Verificando dados...");
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false, // Não redireciona automaticamente
-      callbackUrl,
-    });
+    const { email, password } = data;
 
-    setLoading(false);
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+        // callbackUrl,
+      });
 
-    if (result?.error) {
-      console.log("Sign-in error:", result);
-      setError("Email ou senha incorretos");
-    } else if (result?.ok) {
-      router.push(callbackUrl);
-      router.refresh(); // Atualiza dados do servidor
+      toast.dismiss(toastId);
+
+      if (result?.error) {
+        toast.error("Erro ao fazer login. Verifique e-mail ou senha.");
+        return;
+      }
+
+      if (result?.ok) {
+        toast.success("Login realizado com sucesso!");
+        setTimeout(() => {
+          router.replace("/admin");
+        }, 1500);
+      }
+    } catch (error) {
+      toast.dismiss(toastId);
+      toast.error("Erro inesperado ao tentar login.");
+      console.log(error);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8">
+    <div className="bg-chart-2 flex min-h-screen items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+      <div className="border-muted bg-card w-full max-w-xl space-y-8 rounded-lg border p-6 shadow-lg">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Faça login na sua conta
+          <h2 className="mt-6 text-center text-3xl font-extrabold">
+            Faça seu Login
           </h2>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="-space-y-px rounded-md shadow-sm">
-            <div>
-              <label htmlFor="email" className="sr-only">
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                className="relative block w-full appearance-none rounded-none rounded-t-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-indigo-500 focus:ring-indigo-500 focus:outline-none sm:text-sm"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Senha
-              </label>
-              <div className="flex w-full items-center justify-between rounded-none rounded-b-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus-within:z-10 focus-within:border-indigo-500 focus-within:ring-indigo-500">
-                <input
-                  id="password"
-                  name="password"
-                  type={passwordVisible ? "text" : "password"}
-                  required
-                  className="relative block w-full appearance-none focus:outline-none sm:text-sm"
-                  placeholder="Senha"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="cursor-pointer bg-none text-xs"
-                  onClick={() => setPasswordVisible(!passwordVisible)}
-                >
-                  Ver
-                </button>
-              </div>
-            </div>
-          </div>
 
-          {error && (
-            <div className="text-center text-sm text-red-600">{error}</div>
-          )}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:opacity-50"
-            >
-              {loading ? "Entrando..." : "Entrar"}
-            </button>
-          </div>
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Senha</FormLabel>
+                  <FormControl>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        {...field}
+                        className="relative block w-full appearance-none focus:outline-none sm:text-sm"
+                        type={passwordVisible ? "text" : "password"}
+                      />
 
-          {/* Login com Google */}
-          <div>
-            <button
-              onClick={() => signIn("google", { callbackUrl })}
-              className="flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-            >
-              Entrar com Google
-            </button>
-          </div>
-        </form>
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="outline"
+                        className="text-xs"
+                        onClick={() => setPasswordVisible(!passwordVisible)}
+                      >
+                        {passwordVisible ? <Eye /> : <EyeClosed />}
+                      </Button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Button className="w-full" size="lg" disabled={loading}>
+              Entrar
+            </Button>
+          </form>
+        </Form>
+
+        <Link
+          href="/auth/sign-up"
+          className="text-chart-3 flex justify-center text-sm hover:underline"
+        >
+          Não tem uma conta? Crie uma agora!
+        </Link>
       </div>
     </div>
   );
