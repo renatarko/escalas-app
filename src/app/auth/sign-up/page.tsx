@@ -1,148 +1,237 @@
 "use client";
-import { signIn } from "next-auth/react";
+
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { api } from "@/trpc/react";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/app/_components/ui/form";
+import z from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Input } from "@/app/_components/ui/input";
+import { Button } from "@/app/_components/ui/button";
+import { Eye, EyeClosed } from "lucide-react";
+import Link from "next/link";
+import { toast } from "sonner";
+
+const formSchema = z
+  .object({
+    name: z
+      .string({ required_error: "Nome obrigarório para cadastro" })
+      .min(2, "Nome obrigatório"),
+    email: z
+      .string({ required_error: "E-mail obrigatório para cadastro" })
+      .email({ message: "Preencha com e-mail válido" }),
+    whatsapp: z
+      .string({ required_error: "WhatsApp obrigatório para cadastro" })
+      .regex(/^\d{10,11}$/, {
+        message:
+          "Informe um número de WhatsApp válido com DDD (ex: 11987654321)",
+      }),
+    password: z
+      .string({ required_error: "Informe uma senha para continuar" })
+      .min(6, "A senha deve ter no mínimo 6 caracteres"),
+    confirmPassword: z.string({
+      required_error: "Confirme a senha para continuar",
+    }),
+  })
+  .superRefine((data, ctx) => {
+    if (data.password !== data.confirmPassword) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["confirmPassword"], // mostra o erro neste campo
+        message: "As senhas não coincidem",
+      });
+    }
+  });
+
+type FormData = z.infer<typeof formSchema>;
 
 export default function SignUp() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [whatsapp, setWhatsapp] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
+
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/admin";
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+  const { mutateAsync: createUser, isPending: loading } =
+    api.user.create.useMutation();
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false, // Não redireciona automaticamente
-      callbackUrl,
-    });
+  const form = useForm({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      whatsapp: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
 
-    setLoading(false);
+  const onSubmit = async (data: FormData) => {
+    const { name, email, whatsapp, password } = data;
 
-    if (result?.error) {
-      console.log("Sign-in error:", result);
-      setError("Email ou senha incorretos");
-    } else if (result?.ok) {
-      router.push(callbackUrl);
-      router.refresh(); // Atualiza dados do servidor
+    try {
+      const promise = createUser({
+        email,
+        whatsapp,
+        name,
+        role: "USER",
+        password,
+      });
+
+      toast.promise(promise, {
+        loading: "Criando usuário...",
+        success: () => "Conta criada com sucesso! Redirecionando...",
+        error: (err) =>
+          err instanceof Error
+            ? err.message
+            : "Erro ao criar conta. Tente novamente.",
+      });
+
+      const newUser = await promise;
+
+      if (newUser) {
+        router.replace("/admin");
+      }
+    } catch (error) {
+      console.log(error);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8">
+    <div className="bg-chart-3 flex min-h-screen items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+      <div className="border-muted bg-card w-full max-w-xl space-y-8 rounded-lg border p-6 shadow-lg">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="mt-6 text-center text-3xl font-extrabold">
             Crie sua conta
           </h2>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="-space-y-px rounded-md shadow-sm">
-            <div>
-              <label htmlFor="name" className="sr-only">
-                Name
-              </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                required
-                className="relative block w-full appearance-none rounded-none rounded-t-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-indigo-500 focus:ring-indigo-500 focus:outline-none sm:text-sm"
-                placeholder="Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="email" className="sr-only">
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                className="relative block w-full appearance-none rounded-none rounded-t-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-indigo-500 focus:ring-indigo-500 focus:outline-none sm:text-sm"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="whatsapp" className="sr-only">
-                WhatsApp
-              </label>
-              <input
-                id="whatsapp"
-                name="whatsapp"
-                type="text"
-                required
-                className="relative block w-full appearance-none rounded-none rounded-t-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-indigo-500 focus:ring-indigo-500 focus:outline-none sm:text-sm"
-                placeholder="Whatsapp"
-                value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Senha
-              </label>
-              <div className="flex w-full items-center justify-between rounded-none rounded-b-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus-within:z-10 focus-within:border-indigo-500 focus-within:ring-indigo-500">
-                <input
-                  id="password"
-                  name="password"
-                  type={passwordVisible ? "text" : "password"}
-                  required
-                  className="relative block w-full appearance-none focus:outline-none sm:text-sm"
-                  placeholder="Senha"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="cursor-pointer bg-none text-xs"
-                  onClick={() => setPasswordVisible(!passwordVisible)}
-                >
-                  Ver
-                </button>
-              </div>
-            </div>
-          </div>
 
-          {error && (
-            <div className="text-center text-sm text-red-600">{error}</div>
-          )}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none disabled:opacity-50"
-            >
-              {loading ? "Entrando..." : "Entrar"}
-            </button>
-          </div>
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          {/* Login com Google */}
-          <div>
-            <button
-              onClick={() => signIn("google", { callbackUrl })}
-              className="flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-            >
-              Entrar com Google
-            </button>
-          </div>
-        </form>
+            <FormField
+              control={form.control}
+              name="whatsapp"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>WhatsApp</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="(67)999999999" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Senha</FormLabel>
+                  <FormControl>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        {...field}
+                        className="relative block w-full appearance-none focus:outline-none sm:text-sm"
+                        type={passwordVisible ? "text" : "password"}
+                      />
+
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="outline"
+                        className="text-xs"
+                        onClick={() => setPasswordVisible(!passwordVisible)}
+                      >
+                        {passwordVisible ? <Eye /> : <EyeClosed />}
+                      </Button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirme a Senha</FormLabel>
+                  <FormControl>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        {...field}
+                        className="relative block w-full appearance-none focus:outline-none sm:text-sm"
+                        type={confirmPasswordVisible ? "text" : "password"}
+                      />
+
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="outline"
+                        className="text-xs"
+                        onClick={() =>
+                          setConfirmPasswordVisible(!confirmPasswordVisible)
+                        }
+                      >
+                        {confirmPasswordVisible ? <Eye /> : <EyeClosed />}
+                      </Button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Button className="w-full" size="lg" disabled={loading}>
+              Criar conta
+            </Button>
+          </form>
+        </Form>
+
+        <Link
+          href="/auth/sign-in"
+          className="text-chart-3 flex justify-center text-sm hover:underline"
+        >
+          Já possuo uma conta
+        </Link>
       </div>
     </div>
   );

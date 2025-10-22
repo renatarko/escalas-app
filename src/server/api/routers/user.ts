@@ -78,25 +78,39 @@ export const userRouter = createTRPCRouter({
         name: z.string().min(3),
         email: z.string().email(),
         whatsapp: z.string().min(10),
-        password: z.string().min(6).optional(),
+        password: z.string().min(6),
         role: z.enum(["ADMIN", "USER"]).default("USER"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const data: any = {
+      const data: {
+        name: string;
+        email: string;
+        whatsapp: string;
+        role: "ADMIN" | "USER";
+        password: string;
+      } = {
         name: input.name,
         email: input.email,
         whatsapp: input.whatsapp,
         role: input.role,
+        password: input.password,
       };
 
-      // Se tiver senha, faz o hash
-      if (input.password) {
-        data.password = await hash(input.password, 10);
+      const alreadyUserEmail = await ctx.db.user.findUnique({
+        where: { email: input.email },
+      });
+
+      if (alreadyUserEmail) {
+        throw new Error("E-mail já está cadastrado.");
       }
 
-      return await ctx.db.user.create({
-        data,
+      const password = await hash(input.password, 10);
+      const newUser = await ctx.db.user.create({
+        data: {
+          ...data,
+          password,
+        },
         select: {
           id: true,
           name: true,
@@ -105,6 +119,7 @@ export const userRouter = createTRPCRouter({
           role: true,
         },
       });
+      return newUser;
     }),
 
   // Atualizar usuário
@@ -122,7 +137,13 @@ export const userRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { id, password, ...data } = input;
 
-      const updateData: any = data;
+      const updateData: {
+        name?: string;
+        email?: string;
+        whatsapp?: string;
+        role?: "ADMIN" | "USER";
+        password?: string;
+      } = data;
 
       // Se tiver nova senha, faz o hash
       if (password) {
