@@ -5,10 +5,16 @@ import {
   type NextAuthConfig,
 } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import EmailProvider from "next-auth/providers/email";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
 import { type Adapter } from "next-auth/adapters";
 import { db } from "@/server/db";
+import { cookies } from "next/headers";
+import { env } from "@/env";
+import { InviteEmailTemplate } from "@/app/_components/emails/invite";
+import { getData, sendEmail } from "@/lib/mailer";
+import type { BandRole } from "@prisma/client";
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -30,6 +36,23 @@ declare module "next-auth" {
     role: "USER" | "ADMIN";
   }
 }
+
+export const sendVerificationRequest = async ({
+  identifier: email,
+  url,
+  provider,
+}: any): Promise<void> => {
+  const emailHtml = await getData(
+    InviteEmailTemplate({ email, bandName: "", inviteId: "" }),
+  );
+  console.log({ url, email });
+  try {
+    await sendEmail(email, "Testando o Invite por email", emailHtml, provider);
+  } catch (error) {
+    console.error("Failed to send email:", error);
+    throw new Error("Failed to send email");
+  }
+};
 
 /**
  * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
@@ -92,16 +115,29 @@ export const authConfig: NextAuthConfig = {
         };
       },
     }),
-    /**
-     * ...add more providers here.
-     *
-     * Most other providers require a bit more work than the Discord provider. For example, the
-     * GitHub provider requires you to add the `refresh_token_expires_in` field to the Account
-     * model. Refer to the NextAuth.js docs for the provider you want to use. Example:
-     *
-     * @see https://next-auth.js.org/providers/github
-     */
+    EmailProvider({
+      id: "email",
+      server: {
+        host: env.SMTP_HOST,
+        port: env.SMTP_PORT,
+        auth: {
+          user: env.SMTP_USER,
+          pass: env.SMTP_PASSWORD,
+        },
+      },
+      from: env.SMTP_FROM,
+      sendVerificationRequest,
+    }),
   ],
+  /**
+   * ...add more providers here.
+   *
+   * Most other providers require a bit more work than the Discord provider. For example, the
+   * GitHub provider requires you to add the `refresh_token_expires_in` field to the Account
+   * model. Refer to the NextAuth.js docs for the provider you want to use. Example:
+   *
+   * @see https://next-auth.js.org/providers/github
+   */
   session: {
     strategy: "jwt",
     maxAge: 60 * 24 * 60 * 60, // 60 days
@@ -109,32 +145,85 @@ export const authConfig: NextAuthConfig = {
   adapter: PrismaAdapter(db) as Adapter,
   debug: process.env.NODE_ENV === "development",
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
+    async jwt({ token }) {
+      // if (user) {
+      //   token = {
+      //     ...token,
+      //     id: user.id,
+      //     name: user.name,
+      //     email: user.email,
+      //     image: user.image,
+      //     role: user.role,
+      //   };
+      //   return token;
+      // }
+
+      console.log("token", token);
+      const dbUser = await db.user.findUnique({
+        where: { email: token.email ?? "" },
+        include: {
+          bandMemberships: {
+            select: {
+              band: {
+                select: { nickname: true },
+              },
+            },
+          },
+        },
+      });
+
+      const cookieStore = cookies();
+      const inviteToken = (await cookieStore).get("invite-token")?.value;
+      console.log({ inviteToken, dbUser });
+
+      if (inviteToken && dbUser) {
+        try {
+          const invite = await db.bandInvitation.findUnique({
+            where: { token: inviteToken },
+          });
+
+          if (invite && invite.email === dbUser.email) {
+            await db.$transaction([
+              db.bandMember.create({
+                data: {
+                  userId: dbUser.id,
+                  bandId: invite.bandId,
+                  joinedAt: new Date(),
+                  role: "MEMBER",
+                },
+              }),
+              db.bandInvitation.update({
+                where: { token: inviteToken },
+                data: { status: "ACCEPTED" },
+              }),
+            ]);
+
+            const band = await db.band.findUnique({
+              where: { id: invite.bandId },
+              select: { nickname: true },
+            });
+
+            if (band?.nickname) {
+              (await cookieStore).set("bandNickname", band.nickname);
+            }
+          }
+
+          // (await cookieStore).delete("invite-token");
+          console.log("Agora seria deletar o cookie invite-token");
+        } catch (error) {
+          console.error("JWT Callback - Failed to process invite:", error);
+        }
+      }
+
+      if (dbUser) {
         token = {
           ...token,
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-          role: user.role,
+          id: dbUser.id,
+          name: dbUser.name,
+          email: dbUser.email,
+          image: dbUser.image,
+          role: dbUser.role,
         };
-        return token;
-      }
-      if (token?.email) {
-        const dbUser = await db.user.findUnique({
-          where: { email: token.email },
-        });
-        if (dbUser) {
-          token = {
-            ...token,
-            id: dbUser.id,
-            name: dbUser.name,
-            email: dbUser.email,
-            image: dbUser.image,
-            role: dbUser.role,
-          };
-        }
       }
       return token;
     },

@@ -5,6 +5,8 @@ import { Poppins } from "next/font/google";
 
 import { TRPCReactProvider } from "@/trpc/react";
 import { Toaster } from "./_components/ui/sonner";
+import { Header } from "./_components/header";
+import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
   title: "Escalas App",
@@ -15,7 +17,7 @@ export const metadata: Metadata = {
 const poppins = Poppins({
   subsets: ["latin"],
   variable: "--font-geist-sans",
-  weight: ["400", "700"],
+  weight: ["300", "400", "700"],
 });
 
 export default function RootLayout({
@@ -24,7 +26,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${poppins.variable}`}>
       <body>
-        <TRPCReactProvider>{children}</TRPCReactProvider>
+        <TRPCReactProvider>
+          <SessionProvider>
+            <Header />
+            {children}
+          </SessionProvider>
+        </TRPCReactProvider>
         <Toaster />
       </body>
     </html>

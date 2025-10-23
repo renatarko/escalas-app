@@ -7,6 +7,41 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  ADMIN
+  USER
+}
+
+enum ScheduleStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum RecurrenceType {
+  SINGLE
+  RECURRING
+}
+
+enum RecurrenceFrequency {
+  WEEKLY
+  MONTHLY
+}
+
+enum BandRole {
+  OWNER       // Criador da banda (admin total)
+  ADMIN       // Pode gerenciar escalas e membros
+  MEMBER      // Apenas participa das escalas
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+  DECLINED
+}
+
 model Account {
   id                       String  @id @default(cuid())
   userId                   String
@@ -35,8 +70,8 @@ model Session {
 }
 
 model User {
-  id                       String                  @id @default(cuid())
-  name                     String
+  id                       String                  @id @default(uuid())
+  name                     String?
   email                    String                  @unique
   emailVerified            DateTime?
   image                    String?
@@ -45,8 +80,17 @@ model User {
   role                     Role                    @default(USER)
   createdAt                DateTime                @default(now()) @map("created_at")
   updatedAt                DateTime                @updatedAt @map("updated_at")
+  
   accounts                 Account[]
   sessions                 Session[]
+  
+  // Relacionamentos com Bands
+  bandsCreated             Band[]                  @relation("BandsCreated")
+  bandMemberships          BandMember[]
+  invitationsCreated       BandInvitation[]        @relation("InvitationsCreated")
+  invitationsReceived      BandInvitation[]        @relation("InvitationsAccepted")
+  
+  // Relacionamentos com Schedules
   recurrenceConfigsCreated RecurrenceConfig[]
   recurrenceParticipants   RecurrenceParticipant[]
   scheduleParticipants     ScheduleParticipant[]
@@ -63,8 +107,72 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model Band {
+  id          String         @id @default(cuid())
+  name        String
+  nickname    String
+  description String?
+  image       String?        // Logo/foto da banda
+  createdById String         @map("created_by_id")
+  createdBy   User           @relation("BandsCreated", fields: [createdById], references: [id])
+  isActive    Boolean        @default(true) @map("is_active")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  
+  members     BandMember[]
+  schedules   Schedule[]
+  recurrenceConfigs RecurrenceConfig[]
+  invitations BandInvitation[]
+  
+  @@map("bands")
+}
+
+model BandMember {
+  id           String       @id @default(cuid())
+  bandId       String       @map("band_id")
+  userId       String       @map("user_id")
+  role         BandRole     @default(MEMBER)
+  instruments  String[]     // Array de instrumentos que toca
+  isActive     Boolean      @default(true) @map("is_active")
+  joinedAt     DateTime     @default(now()) @map("joined_at")
+  leftAt       DateTime?    @map("left_at")
+  
+  band         Band         @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([bandId, userId])
+  @@index([bandId])
+  @@index([userId])
+  @@map("band_members")
+}
+
+model BandInvitation {
+  id          String            @id @default(cuid())
+  bandId      String            @map("band_id")
+  email       String
+  name        String?
+  instruments String[]          // Instrumentos que tocará
+  status      InvitationStatus  @default(PENDING)
+  token       String            @unique
+  expiresAt   DateTime          @map("expires_at")
+  invitedById String            @map("invited_by_id")
+  invitedBy   User              @relation("InvitationsCreated", fields: [invitedById], references: [id])
+  acceptedAt  DateTime?         @map("accepted_at")
+  userId      String?           @map("user_id")
+  user        User?             @relation("InvitationsAccepted", fields: [userId], references: [id])
+  band        Band              @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  createdAt   DateTime          @default(now()) @map("created_at")
+  
+  @@index([email])
+  @@index([token])
+  @@index([bandId])
+  @@map("band_invitations")
+}
+
+
 model Schedule {
   id                String                @id @default(cuid())
+  bandId            String                @map("band_id")  // NOVO
   date              DateTime              @db.Date
   time              DateTime              @db.Time(6)
   status            ScheduleStatus        @default(PENDING)
@@ -74,17 +182,21 @@ model Schedule {
   createdById       String                @map("created_by_id")
   createdAt         DateTime              @default(now()) @map("created_at")
   updatedAt         DateTime              @updatedAt @map("updated_at")
+  
+  band              Band                  @relation(fields: [bandId], references: [id], onDelete: Cascade)  // NOVO
   participants      ScheduleParticipant[]
   createdBy         User                  @relation(fields: [createdById], references: [id])
   recurrenceConfig  RecurrenceConfig?     @relation(fields: [recurrenceGroupId], references: [id])
 
   @@index([date])
+  @@index([bandId])  // NOVO
   @@index([recurrenceGroupId])
   @@map("schedules")
 }
 
 model RecurrenceConfig {
   id           String                  @id @default(cuid())
+  bandId       String                  @map("band_id")  // NOVO
   frequency    RecurrenceFrequency
   dayOfWeek    Int?                    @map("day_of_week")
   weekOfMonth  Int?                    @map("week_of_month")
@@ -95,10 +207,13 @@ model RecurrenceConfig {
   createdById  String                  @map("created_by_id")
   createdAt    DateTime                @default(now()) @map("created_at")
   updatedAt    DateTime                @updatedAt @map("updated_at")
+  
+  band         Band                    @relation(fields: [bandId], references: [id], onDelete: Cascade)  // NOVO
   createdBy    User                    @relation(fields: [createdById], references: [id])
   participants RecurrenceParticipant[]
   schedules    Schedule[]
 
+  @@index([bandId])  // NOVO
   @@map("recurrence_configs")
 }
 
@@ -136,23 +251,3 @@ model ScheduleParticipant {
   @@map("schedule_participants")
 }
 
-enum Role {
-  ADMIN
-  USER
-}
-
-enum ScheduleStatus {
-  PENDING
-  CONFIRMED
-  CANCELLED
-}
-
-enum RecurrenceType {
-  SINGLE
-  RECURRING
-}
-
-enum RecurrenceFrequency {
-  WEEKLY
-  MONTHLY
-}
