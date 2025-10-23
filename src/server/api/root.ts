@@ -2,6 +2,9 @@ import { userRouter } from "@/server/api/routers/user";
 import { scheduleRouter } from "@/server/api/routers/schedule";
 import { recurrenceRouter } from "@/server/api/routers/recurrence";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
+import { bandRouter } from "./routers/band";
+import { invitationRouter } from "./routers/invitation";
+import { memberRouter } from "./routers/member";
 
 /**
  * This is the primary router for your server.
@@ -10,8 +13,11 @@ import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
  */
 export const appRouter = createTRPCRouter({
   user: userRouter,
+  band: bandRouter,
+  bandMember: memberRouter,
   schedule: scheduleRouter,
   recurrence: recurrenceRouter,
+  invitation: invitationRouter,
 });
 
 // export type definition of API

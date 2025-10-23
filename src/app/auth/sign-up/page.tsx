@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/trpc/react";
 import {
   Form,
@@ -20,6 +20,7 @@ import { Button } from "@/app/_components/ui/button";
 import { Eye, EyeClosed } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { getEmailFromCookie } from "@/server/utils/get-email-from-cookies";
 
 const formSchema = z
   .object({
@@ -57,11 +58,23 @@ type FormData = z.infer<typeof formSchema>;
 export default function SignUp() {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
+  const [invitedEmail, setInvitedEmail] = useState("");
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.has("callbackUrl");
+
+  console.log("tem callback na url? ", callbackUrl);
+
+  const { data: userInvited } = api.user.getByEmail.useQuery(
+    { email: invitedEmail },
+    { enabled: callbackUrl && invitedEmail !== "" },
+  );
 
   const { mutateAsync: createUser, isPending: loading } =
     api.user.create.useMutation();
+
+  const { mutateAsync: updateUser } = api.user.update.useMutation();
 
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -74,10 +87,46 @@ export default function SignUp() {
     },
   });
 
+  useEffect(() => {
+    if (callbackUrl) {
+      void getEmailFromCookie().then((email) => {
+        if (email) {
+          setInvitedEmail(decodeURIComponent(email));
+          form.setValue("email", decodeURIComponent(email));
+        }
+      });
+    }
+  }, [form, callbackUrl]);
+
   const onSubmit = async (data: FormData) => {
     const { name, email, whatsapp, password } = data;
 
     try {
+      if (callbackUrl) {
+        const response = updateUser({
+          id: userInvited?.id ?? "",
+          name,
+          whatsapp,
+          password,
+        });
+
+        toast.promise(response, {
+          loading: "Verificando credenciais...",
+          success: () => "Conta criada com sucesso!",
+          error: (err) =>
+            err instanceof Error
+              ? err.message
+              : "Erro ao criar conta. Tente novamente.",
+        });
+
+        const userCreated = await response;
+
+        if (userCreated) {
+          router.replace("/");
+        }
+        return;
+      }
+
       const promise = createUser({
         email,
         whatsapp,
@@ -88,7 +137,7 @@ export default function SignUp() {
 
       toast.promise(promise, {
         loading: "Criando usuário...",
-        success: () => "Conta criada com sucesso! Redirecionando...",
+        success: () => "Conta criada com sucesso! Faça o Login",
         error: (err) =>
           err instanceof Error
             ? err.message
@@ -98,7 +147,7 @@ export default function SignUp() {
       const newUser = await promise;
 
       if (newUser) {
-        router.replace("/admin");
+        router.replace("/auth/sign-in");
       }
     } catch (error) {
       console.log(error);
@@ -137,7 +186,7 @@ export default function SignUp() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" {...field} />
+                    <Input disabled={callbackUrl} type="email" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -29,6 +29,7 @@ import { ScaleCard } from "./scale-card";
 import { instrumentsIcons } from "@/lib/constants";
 import type { Instrument } from "@/lib/types";
 import { api } from "@/trpc/react";
+import { useSession } from "next-auth/react";
 
 const participantRowSchema = z.object({
   userId: z.string(),
@@ -101,8 +102,12 @@ type ParticipantRow = {
 };
 
 export const CreateScaleForm = () => {
+  const { data: session } = useSession();
+
   const { mutateAsync: createSingleSchedule } =
     api.schedule.createSingle.useMutation();
+
+  const { data: users } = api.user.getAll.useQuery();
 
   const [data, setData] = React.useState<FormData[] | null>(null);
   const [participantRows, setParticipantRows] = React.useState<
@@ -113,6 +118,7 @@ export const CreateScaleForm = () => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       scaleName: "",
+      participants: users,
     },
   });
 
@@ -126,12 +132,17 @@ export const CreateScaleForm = () => {
     setData((prevData) => (prevData ? [...prevData, data] : [data]));
 
     try {
-      if (data.scaleType === "weekly") {
+      if (data.scaleType === "weekly" && session?.user) {
         const result = await createSingleSchedule({
           date: Array.isArray(data.date) ? data.date[0] : data.date,
           time: new Date(),
-          createdById: "user-123",
-          participants: data.participants,
+          createdById: session.user.id,
+          participants: [
+            {
+              participantId: "cmh25wbfy0004y30ryyscfhzo",
+              instrument: "guitar",
+            },
+          ],
         });
 
         console.log("Schedule created:", result);
@@ -145,10 +156,8 @@ export const CreateScaleForm = () => {
   const selectedParticipantIds = new Set<string>(
     participantRows
       .map((row) => {
-        const participant = participantsList.find(
-          (p) => p.name === row.participant,
-        );
-        return participant?.userId;
+        const participant = users?.find((p) => p.name === row.participant);
+        return participant?.id;
       })
       .filter((id): id is string => Boolean(id)),
   );
@@ -159,13 +168,13 @@ export const CreateScaleForm = () => {
       (row) => row.userId === currentRowId,
     );
 
-    return participantsList.filter((participant) => {
+    return users?.filter((participant) => {
       // Se é o participante já selecionado nesta linha, mantém disponível
       if (currentRow?.participant === participant.name) {
         return true;
       }
       // Remove se já foi selecionado em outra linha
-      return !selectedParticipantIds.has(participant.userId);
+      return !selectedParticipantIds.has(participant.id);
     });
   };
 

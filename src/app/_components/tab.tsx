@@ -1,3 +1,6 @@
+"use client";
+
+import { api } from "@/trpc/react";
 import { CreateParticipantForm } from "./create-participant-form";
 import { CreateScaleForm } from "./create-scale-form";
 import { CreatedParticipant } from "./created-participant";
@@ -6,6 +9,11 @@ import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import { Calendar, Users } from "lucide-react";
 
 export function Tab() {
+  // const { data } = api.bandMember.getBandMembers.useQuery({
+  //   nickname: "essencia",
+  // });
+  // console.log(data);
+
   return (
     <div className="flex w-full flex-col gap-6 rounded-lg shadow-lg">
       <Tabs defaultValue="scales" className="w-full gap-6">
@@ -15,17 +23,17 @@ export function Tab() {
           </TabsTrigger>
           <TabsTrigger
             className="h-full w-full rounded-none"
-            value="participants"
+            value="invitations"
           >
             <Users />
-            Integrantes
+            Participantes
           </TabsTrigger>
         </TabsList>
         <TabsContentCustom title="Gerenciar Escalas" value="scales">
           <CreateScaleForm />
         </TabsContentCustom>
 
-        <TabsContentCustom title="Gerenciar Participantes" value="participants">
+        <TabsContentCustom title="Gerenciar Integrantes" value="invitations">
           <CreateParticipantForm />
           <div className="mt-6 space-y-4">
             <h4 className="font-semibold">Todos os Participantes</h4>
