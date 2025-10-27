@@ -62,13 +62,11 @@ export default function SignUp() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.has("callbackUrl");
+  const token = searchParams.get("invite");
 
-  console.log("tem callback na url? ", callbackUrl);
-
-  const { data: userInvited } = api.user.getByEmail.useQuery(
-    { email: invitedEmail },
-    { enabled: callbackUrl && invitedEmail !== "" },
+  const { data: invite } = api.invitation.getByToken.useQuery(
+    { token: token ?? "" },
+    { enabled: !!token },
   );
 
   const { mutateAsync: createUser, isPending: loading } =
@@ -88,7 +86,7 @@ export default function SignUp() {
   });
 
   useEffect(() => {
-    if (callbackUrl) {
+    if (token) {
       void getEmailFromCookie().then((email) => {
         if (email) {
           setInvitedEmail(decodeURIComponent(email));
@@ -96,17 +94,24 @@ export default function SignUp() {
         }
       });
     }
-  }, [form, callbackUrl]);
+  }, [form, token]);
 
   const onSubmit = async (data: FormData) => {
     const { name, email, whatsapp, password } = data;
 
     try {
-      if (callbackUrl) {
-        const response = updateUser({
-          id: userInvited?.id ?? "",
-          name,
+      if (token) {
+        // const response = updateUser({
+        //   id: userInvited?.id ?? "",
+        //   name,
+        //   whatsapp,
+        //   password,
+        // });
+        const response = createUser({
+          email,
           whatsapp,
+          name,
+          role: "USER",
           password,
         });
 
@@ -122,7 +127,7 @@ export default function SignUp() {
         const userCreated = await response;
 
         if (userCreated) {
-          router.replace("/");
+          router.replace("/auth/sign-in");
         }
         return;
       }
@@ -186,7 +191,7 @@ export default function SignUp() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input disabled={callbackUrl} type="email" {...field} />
+                    <Input disabled={!!token} type="email" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -6,6 +6,7 @@ import { Button } from "./ui/button";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { UserLogged } from "./user-logged";
 
 export const Header = () => {
   const { data: session } = useSession();
@@ -41,13 +42,15 @@ export const Header = () => {
       </Link>
       <div className="flex items-center gap-4 justify-self-end">
         {!!user && user.role === "ADMIN" && (
-          <Button variant="outline">
-            <Link href="/admin">Gerenciar Escalas</Link>
-          </Button>
+          <UserLogged />
+          // <Button variant="outline">
+          //   <Link href="/admin">Gerenciar Escalas</Link>
+          // </Button>
         )}
 
         {!!user && user.role === "USER" && (
-          <Button variant="outline">Minhas Escalas</Button>
+          <UserLogged />
+          // <Button variant="outline">Minhas Escalas</Button>
         )}
 
         {!user && (

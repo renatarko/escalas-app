@@ -6,15 +6,17 @@ import { addDays } from "date-fns"; // For setting expiration dates
 import { getData, sendEmail } from "@/lib/mailer";
 import { CreateScaleForm } from "@/app/_components/create-scale-form";
 import { InviteEmailTemplate } from "@/app/_components/emails/invite";
+import { BandRole } from "@prisma/client";
 
 // Zod schemas for input validation
 const createInvitationSchema = z.object({
   bandId: z.string().cuid(),
   email: z.string().email(),
-  name: z.string().optional(),
-  instruments: z
-    .array(z.string())
-    .min(1, "At least one instrument is required"),
+  role: z.enum([BandRole.ADMIN, BandRole.MEMBER]),
+  // name: z.string().optional(),
+  // instruments: z
+  //   .array(z.string())
+  //   .min(1, "At least one instrument is required"),
 });
 
 const acceptInvitationSchema = z.object({
@@ -35,7 +37,8 @@ export const invitationRouter = createTRPCRouter({
   create: protectedProcedure
     .input(createInvitationSchema)
     .mutation(async ({ ctx, input }) => {
-      const { bandId, email, name, instruments } = input;
+      // const { bandId, email, name, instruments } = input;
+      const { bandId, email, role } = input;
       const {
         session: {
           user: { id: userId },
@@ -104,17 +107,18 @@ export const invitationRouter = createTRPCRouter({
         data: {
           bandId,
           email,
-          name,
-          instruments,
+          // name,
+          // instruments,
           status: "PENDING",
           token,
+          role,
           expiresAt,
           invitedById: userId,
         },
       });
 
       const htmlData = await getData(
-        InviteEmailTemplate({ email, bandName: band.name, inviteId: token }),
+        InviteEmailTemplate({ email, bandName: band.name, token }),
       );
       const response = await sendEmail(
         email,

@@ -23,17 +23,27 @@ import { CreatedParticipant } from "./created-participant";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
+import { BandRole } from "@prisma/client";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import { signIn } from "next-auth/react";
 
 const formSchema = z.object({
-  name: z.string().min(2, "Nome obrigatório"),
+  // name: z.string().min(2, "Nome obrigatório"),
   email: z.string().min(2, "E-mail obrigatório"),
+  role: z.enum([BandRole.ADMIN, BandRole.MEMBER]),
   //   instrument: z.string().min(2, "Função obrigatória"),
-  instruments: z
-    .array(z.string())
-    .min(1, "Selecione pelo menos um instrumento"),
-  whatsapp: z
-    .string({ required_error: "WhatsApp obrigatório" })
-    .min(8, "WhatsApp obrigatório"),
+  // instruments: z
+  //   .array(z.string())
+  //   .min(1, "Selecione pelo menos um instrumento"),
+  // whatsapp: z
+  //   .string({ required_error: "WhatsApp obrigatório" })
+  //   .min(8, "WhatsApp obrigatório"),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -48,9 +58,10 @@ export const CreateParticipantForm = () => {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
-      whatsapp: "",
-      instruments: [],
+      email: "",
+      // name: "",
+      // whatsapp: "",
+      // instruments: [],
     },
   });
 
@@ -62,13 +73,20 @@ export const CreateParticipantForm = () => {
       const invite = await createInvitation({
         bandId: !!bands && bands?.length > 0 ? bands[0]?.id : "",
         email: data.email,
-        name: data.name,
-        instruments: data.instruments,
+        role: data.role,
+        // name: data.name,
+        // instruments: data.instruments,
       });
 
       if (invite) {
-        form.reset();
+        // const result = await signIn("email", {
+        //   email: data.email,
+        //   redirect: false,
+        //   // callbackUrl,
+        // });
+
         toast.success("Convite criado com sucesso");
+        form.reset();
       }
     } catch (error) {
       const message = (error as Error) ?? "Não foi possível criar convite";
@@ -87,8 +105,8 @@ export const CreateParticipantForm = () => {
             <UserPlus className="size-4" />
             Convidar Integrante
           </h5>
-          <div className="space-y-4 p-4">
-            <FormField
+          <div className="flex items-start gap-4 space-y-4 p-4">
+            {/* <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
@@ -100,13 +118,13 @@ export const CreateParticipantForm = () => {
                   <FormMessage />
                 </FormItem>
               )}
-            />
+            /> */}
 
             <FormField
               control={form.control}
               name="email"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="w-full">
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input {...field} />
@@ -117,6 +135,30 @@ export const CreateParticipantForm = () => {
             />
 
             <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Função</FormLabel>
+                  <FormControl>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={BandRole.ADMIN}>
+                          Administrador
+                        </SelectItem>
+                        <SelectItem value={BandRole.MEMBER}>Membro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* <FormField
               control={form.control}
               name="whatsapp"
               render={({ field }) => (
@@ -131,9 +173,9 @@ export const CreateParticipantForm = () => {
                   <FormMessage />
                 </FormItem>
               )}
-            />
+            /> */}
 
-            <FormField
+            {/* <FormField
               control={form.control}
               name="instruments"
               render={({ field }) => (
@@ -179,7 +221,7 @@ export const CreateParticipantForm = () => {
                   <FormMessage />
                 </FormItem>
               )}
-            />
+            /> */}
           </div>
 
           <Separator className="px-4 sm:px-16" />

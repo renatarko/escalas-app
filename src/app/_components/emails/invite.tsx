@@ -14,16 +14,16 @@ import {
 type InviteEmailTemplateProps = {
   email?: string;
   bandName: string;
-  inviteId: string;
+  token: string;
 };
 
 export const InviteEmailTemplate = ({
   email,
   bandName,
-  inviteId,
+  token,
 }: InviteEmailTemplateProps) => {
-  const baseUrl = process.env.NEXT_AUTH_URL;
-  const inviteUrl = `${baseUrl}/invite/${inviteId}`;
+  const baseUrl = process.env.NEXTAUTH_URL;
+  const inviteUrl = `${baseUrl}/invitation/${token}`;
 
   const previewText = `Convite para ser membro de uma banda`;
 
@@ -50,8 +50,8 @@ export const InviteEmailTemplate = ({
                   background: "#F6F6F6",
                 }}
               >
-                {/* <Text>Você recebeu um convite para o email:</Text>
-                <Text style={nameText}>{maskEmail(email)}</Text> */}
+                <Text>Você recebeu um convite para o email:</Text>
+                <Text>{email}</Text>
                 <Text>Para aceitar o convite, clique no botão abaixo:</Text>
 
                 <Button href={inviteUrl} style={buttonLink}>
@@ -106,7 +106,7 @@ const text = {
 };
 
 const imageSection = {
-  backgroundColor: "#0004",
+  backgroundColor: "#104e64",
   padding: "20px 0",
 };
 
@@ -124,7 +124,7 @@ const buttonLink = {
   ...text,
   padding: "8px",
   color: "#FFF",
-  background: "#0004",
+  background: "#104e64",
   borderRadius: "8px",
   fontWeight: "bold",
 };

@@ -5,7 +5,7 @@ import {
   type NextAuthConfig,
 } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-import EmailProvider from "next-auth/providers/email";
+import EmailProvider, { type EmailConfig } from "next-auth/providers/email";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcrypt";
 import { type Adapter } from "next-auth/adapters";
@@ -28,26 +28,47 @@ declare module "next-auth" {
       id: string;
       // ...other properties
       role: "USER" | "ADMIN";
+      name?: string | null;
+      email: string;
+      emailVerified: boolean;
     } & DefaultSession["user"];
   }
 
-  interface User {
-    // ...other properties
-    role: "USER" | "ADMIN";
-  }
+  // interface User {
+  //   // ...other properties
+  //   id?: string
+  //   role: "USER" | "ADMIN";
+  //     name?: string | null
+  //      email?: string | null
+  //       emailVerified: boolean
+  // }
 }
 
 export const sendVerificationRequest = async ({
   identifier: email,
   url,
+  token,
   provider,
-}: any): Promise<void> => {
-  const emailHtml = await getData(
-    InviteEmailTemplate({ email, bandName: "", inviteId: "" }),
-  );
-  console.log({ url, email });
+}: {
+  identifier: string;
+  url: string;
+  token: string;
+  provider?: EmailConfig;
+}): Promise<void> => {
   try {
-    await sendEmail(email, "Testando o Invite por email", emailHtml, provider);
+    const emailHtml = await getData(
+      InviteEmailTemplate({ email, bandName: "", token }),
+    );
+    console.log({ url, email });
+    await sendEmail(
+      email,
+      "Escalas App - Clique no link para verificar seu email",
+      emailHtml,
+      provider,
+    );
+
+    // const cookieStore = cookies();
+    // (await cookieStore).set("invite-token", email);
   } catch (error) {
     console.error("Failed to send email:", error);
     throw new Error("Failed to send email");
@@ -182,33 +203,92 @@ export const authConfig: NextAuthConfig = {
             where: { token: inviteToken },
           });
 
-          if (invite && invite.email === dbUser.email) {
-            await db.$transaction([
-              db.bandMember.create({
-                data: {
+          console.log({ invite });
+
+          if (
+            invite &&
+            invite.email === dbUser.email &&
+            invite.expiresAt > new Date()
+          ) {
+            // Verificar se já é membro
+            const existingMember = await db.bandMember.findUnique({
+              where: {
+                bandId_userId: {
                   userId: dbUser.id,
                   bandId: invite.bandId,
-                  joinedAt: new Date(),
-                  role: "MEMBER",
                 },
-              }),
-              db.bandInvitation.update({
-                where: { token: inviteToken },
-                data: { status: "ACCEPTED" },
-              }),
-            ]);
-
-            const band = await db.band.findUnique({
-              where: { id: invite.bandId },
-              select: { nickname: true },
+              },
             });
 
-            if (band?.nickname) {
-              (await cookieStore).set("bandNickname", band.nickname);
+            if (!existingMember) {
+              // Criar membro e deletar convite
+              await db.$transaction([
+                db.bandMember.create({
+                  data: {
+                    userId: dbUser.id,
+                    bandId: invite.bandId,
+                    role: invite.role ?? undefined,
+                  },
+                }),
+                db.bandInvitation.update({
+                  where: { id: invite.id },
+                  data: { status: "ACCEPTED" },
+                }),
+              ]);
+
+              // Atualizar nome do usuário se veio do convite e usuário não tem nome
+              if (invite.name && !dbUser.name) {
+                await db.user.update({
+                  where: { id: dbUser.id },
+                  data: { name: invite.name },
+                });
+              }
+
+              // Definir a organização do convite como atual
+              const band = await db.band.findUnique({
+                where: { id: invite.bandId },
+                select: { nickname: true },
+              });
+
+              if (band?.nickname) {
+                (await cookieStore).set("orgSlug", band.nickname, {
+                  maxAge: 60 * 24 * 60 * 60,
+                });
+              }
             }
           }
 
-          // (await cookieStore).delete("invite-token");
+          // Sempre limpar o cookie de convite após processar
+          // await db.$transaction([
+          //   db.bandMember.create({
+          //     data: {
+          //       userId: dbUser.id,
+          //       bandId: invite.bandId,
+          //       joinedAt: new Date(),
+          //       role: invite.role ?? undefined,
+          //     },
+          //   }),
+          //   db.bandInvitation.update({
+          //     where: { token: inviteToken },
+          //     data: { status: "ACCEPTED" },
+          //   }),
+          //   db.user.update({
+          //     where: { email: invite.email },
+          //     data: { name: "aqui seria o nome dado" },
+          //   }),
+          // ]);
+
+          // const band = await db.band.findUnique({
+          //   where: { id: invite.bandId },
+          //   select: { nickname: true },
+          // });
+
+          // if (band?.nickname) {
+          //   (await cookieStore).set("bandNickname", band.nickname);
+          // }
+
+          (await cookieStore).delete("invite-token");
+          (await cookieStore).delete("invite-email");
           console.log("Agora seria deletar o cookie invite-token");
         } catch (error) {
           console.error("JWT Callback - Failed to process invite:", error);
@@ -228,14 +308,31 @@ export const authConfig: NextAuthConfig = {
       return token;
     },
     async session({ session, token }) {
-      return {
-        ...session,
-        user: {
-          ...session.user,
-          id: token.id as string, // Adiciona o id do token
-          role: token.role as "USER" | "ADMIN", // Adiciona o role do token
-        },
-      };
+      const modifiedSession = { ...session };
+      if (token) {
+        if (!modifiedSession.user) {
+          // create a properly typed user object using values from the token (or sensible defaults)
+          modifiedSession.user = {
+            id: token.id as string,
+            name: token.name as string | null,
+            email: token.email!,
+            emailVerified: session.user.emailVerified,
+            role: (token.role ?? "USER") as "USER" | "ADMIN",
+          };
+        } else {
+          // ensure required properties exist and are typed
+          modifiedSession.user.id = token.id as string;
+          modifiedSession.user.name = token.name ?? modifiedSession.user.name;
+          modifiedSession.user.email =
+            token.email ?? modifiedSession.user.email;
+          modifiedSession.user.role = (token.role ??
+            modifiedSession.user.role) as "USER" | "ADMIN";
+          modifiedSession.user.emailVerified =
+            modifiedSession.user.emailVerified ?? false;
+          // modifiedSession.user.image = (token as any).image ?? modifiedSession.user.image ?? null;
+        }
+      }
+      return modifiedSession;
     },
   },
   pages: {

@@ -1,7 +1,7 @@
 "use client";
 import { signIn } from "next-auth/react";
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { redirect, useRouter, useSearchParams } from "next/navigation";
 import {
   Form,
   FormControl,
@@ -18,9 +18,11 @@ import z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { api } from "@/trpc/react";
 
 const formSchema = z
   .object({
+    name: z.string().optional(),
     email: z
       .string({ required_error: "E-mail obrigatório para cadastro" })
       .email({ message: "Preencha com e-mail válido" }),
@@ -46,6 +48,22 @@ const formSchema = z
         });
       }
     }
+
+    if (data.isFromInvite) {
+      if (!data.name) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["name"],
+          message: "Informe nome para continuar",
+        });
+      } else if (data.name.length < 3) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["name"],
+          message: "Nome inválido",
+        });
+      }
+    }
   });
 
 type FormData = z.infer<typeof formSchema>;
@@ -57,7 +75,7 @@ export default function SignIn() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/";
-  const emailParam = searchParams.get("email");
+  const emailParam = searchParams.get("invite");
   const emailFromInvite = emailParam ? decodeURIComponent(emailParam) : null;
 
   const form = useForm({
@@ -77,19 +95,23 @@ export default function SignIn() {
     const { email, password } = data;
 
     try {
-      if (emailFromInvite) {
-        const result = await signIn("email", {
-          email,
-          // redirect: false,
-          callbackUrl,
-        });
-        console.log({ result });
-        return;
-      }
+      // if (emailFromInvite) {
+      //   const result = await signIn("email", {
+      //     email,
+      //     redirect: false,
+      //     callbackUrl,
+      //   });
+      //   console.log({ result });
+      //   if (result?.ok) {
+      //     console.log("redirecionando...");
+      //     redirect("/");
+      //   }
+      //   return;
+      // }
       const result = await signIn("credentials", {
         email,
         password,
-        // redirect: false,
+        redirect: false,
         callbackUrl,
       });
 
@@ -125,7 +147,7 @@ export default function SignIn() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* {emailFromInvite && (
+            {emailFromInvite && (
               <FormField
                 control={form.control}
                 name="name"
@@ -139,7 +161,7 @@ export default function SignIn() {
                   </FormItem>
                 )}
               />
-            )} */}
+            )}
 
             <FormField
               control={form.control}
