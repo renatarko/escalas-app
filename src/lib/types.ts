@@ -3,4 +3,9 @@ export type Instrument =
   | "electricGuitar"
   | "vocal"
   | "drum"
-  | "keyboard";
+  | "keyboard"
+  | "bass"
+  | "percussion"
+  | "saxophone"
+  | "soundTechnician"
+  | "media";
