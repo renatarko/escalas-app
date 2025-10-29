@@ -55,6 +55,7 @@ export const memberRouter = createTRPCRouter({
         select: {
           id: true,
           role: true,
+          instruments: true,
           band: {
             select: {
               createdById: true,
@@ -65,6 +66,7 @@ export const memberRouter = createTRPCRouter({
               id: true,
               name: true,
               email: true,
+              whatsapp: true,
             },
           },
         },

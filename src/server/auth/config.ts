@@ -195,6 +195,17 @@ export const authConfig: NextAuthConfig = {
 
       const cookieStore = cookies();
       const inviteToken = (await cookieStore).get("invite-token")?.value;
+      const nicknameBand = (await cookieStore).get("nicknameBand")?.value;
+
+      if (!nicknameBand && dbUser && dbUser.bandMemberships.length > 0) {
+        const firstNicknameBand = dbUser.bandMemberships[0]?.band.nickname;
+        if (firstNicknameBand) {
+          (await cookieStore).set("nicknameBand", firstNicknameBand, {
+            maxAge: 60 * 24 * 60 * 60, // 60 days
+          });
+        }
+      }
+
       console.log({ inviteToken, dbUser });
 
       if (inviteToken && dbUser) {
@@ -228,6 +239,7 @@ export const authConfig: NextAuthConfig = {
                     userId: dbUser.id,
                     bandId: invite.bandId,
                     role: invite.role ?? undefined,
+                    instruments: invite.instruments,
                   },
                 }),
                 db.bandInvitation.update({
@@ -251,7 +263,7 @@ export const authConfig: NextAuthConfig = {
               });
 
               if (band?.nickname) {
-                (await cookieStore).set("orgSlug", band.nickname, {
+                (await cookieStore).set("nicknameBand", band.nickname, {
                   maxAge: 60 * 24 * 60 * 60,
                 });
               }
@@ -277,15 +289,6 @@ export const authConfig: NextAuthConfig = {
           //     data: { name: "aqui seria o nome dado" },
           //   }),
           // ]);
-
-          // const band = await db.band.findUnique({
-          //   where: { id: invite.bandId },
-          //   select: { nickname: true },
-          // });
-
-          // if (band?.nickname) {
-          //   (await cookieStore).set("bandNickname", band.nickname);
-          // }
 
           (await cookieStore).delete("invite-token");
           (await cookieStore).delete("invite-email");

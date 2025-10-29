@@ -5,7 +5,6 @@ import { Button } from "./ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -19,7 +18,6 @@ import { Separator } from "./ui/separator";
 import { instrumentOptions } from "@/lib/constants";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
-import { CreatedParticipant } from "./created-participant";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
@@ -31,16 +29,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { signIn } from "next-auth/react";
+import { useFindCurrentBandId } from "@/lib/hooks/band";
 
 const formSchema = z.object({
   // name: z.string().min(2, "Nome obrigatório"),
   email: z.string().min(2, "E-mail obrigatório"),
   role: z.enum([BandRole.ADMIN, BandRole.MEMBER]),
   //   instrument: z.string().min(2, "Função obrigatória"),
-  // instruments: z
-  //   .array(z.string())
-  //   .min(1, "Selecione pelo menos um instrumento"),
+  instruments: z
+    .array(z.string())
+    .min(1, "Selecione pelo menos um instrumento"),
   // whatsapp: z
   //   .string({ required_error: "WhatsApp obrigatório" })
   //   .min(8, "WhatsApp obrigatório"),
@@ -51,7 +49,7 @@ type FormData = z.infer<typeof formSchema>;
 export const CreateParticipantForm = () => {
   const [data, setData] = React.useState<FormData | null>(null);
 
-  const { data: bands } = api.band.getBands.useQuery();
+  const { bandId } = useFindCurrentBandId();
 
   const { mutateAsync: createInvitation } = api.invitation.create.useMutation();
 
@@ -61,7 +59,7 @@ export const CreateParticipantForm = () => {
       email: "",
       // name: "",
       // whatsapp: "",
-      // instruments: [],
+      instruments: [],
     },
   });
 
@@ -69,13 +67,18 @@ export const CreateParticipantForm = () => {
     console.log(data);
     setData(data);
 
+    if (!bandId) {
+      toast.success("Banda não encontrada");
+      return;
+    }
+
     try {
       const invite = await createInvitation({
-        bandId: !!bands && bands?.length > 0 ? bands[0]?.id : "",
+        bandId: bandId,
         email: data.email,
         role: data.role,
         // name: data.name,
-        // instruments: data.instruments,
+        instruments: data.instruments,
       });
 
       if (invite) {
@@ -105,7 +108,7 @@ export const CreateParticipantForm = () => {
             <UserPlus className="size-4" />
             Convidar Integrante
           </h5>
-          <div className="flex items-start gap-4 space-y-4 p-4">
+          <div className="flex flex-col">
             {/* <FormField
               control={form.control}
               name="name"
@@ -120,43 +123,50 @@ export const CreateParticipantForm = () => {
               )}
             /> */}
 
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem className="w-full">
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="flex items-start gap-4 space-y-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem className="w-full">
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Função</FormLabel>
-                  <FormControl>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={BandRole.ADMIN}>
-                          Administrador
-                        </SelectItem>
-                        <SelectItem value={BandRole.MEMBER}>Membro</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Função</FormLabel>
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger className="w-48">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={BandRole.ADMIN}>
+                            Administrador
+                          </SelectItem>
+                          <SelectItem value={BandRole.MEMBER}>
+                            Membro
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {/* <FormField
               control={form.control}
@@ -175,7 +185,7 @@ export const CreateParticipantForm = () => {
               )}
             /> */}
 
-            {/* <FormField
+            <FormField
               control={form.control}
               name="instruments"
               render={({ field }) => (
@@ -221,7 +231,7 @@ export const CreateParticipantForm = () => {
                   <FormMessage />
                 </FormItem>
               )}
-            /> */}
+            />
           </div>
 
           <Separator className="px-4 sm:px-16" />
