@@ -24,6 +24,7 @@ enum RecurrenceType {
 }
 
 enum RecurrenceFrequency {
+  DAILY
   WEEKLY
   MONTHLY
 }
@@ -174,8 +175,9 @@ model BandInvitation {
 model Schedule {
   id                String                @id @default(cuid())
   bandId            String                @map("band_id")  // NOVO
+  name              String?               
   date              DateTime              @db.Date
-  time              DateTime              @db.Time(6)
+  time              DateTime?              @db.Time(6)
   status            ScheduleStatus        @default(PENDING)
   notes             String?
   recurrenceType    RecurrenceType        @default(SINGLE) @map("recurrence_type")
@@ -201,7 +203,7 @@ model RecurrenceConfig {
   frequency    RecurrenceFrequency
   dayOfWeek    Int?                    @map("day_of_week")
   weekOfMonth  Int?                    @map("week_of_month")
-  time         DateTime                @db.Time(6)
+  time         DateTime?                @db.Time(6)
   startDate    DateTime                @map("start_date") @db.Date
   endDate      DateTime                @map("end_date") @db.Date
   notes        String?

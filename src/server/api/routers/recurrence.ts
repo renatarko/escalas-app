@@ -7,32 +7,45 @@ export const recurrenceRouter = createTRPCRouter({
   create: publicProcedure
     .input(
       z.object({
-        frequency: z.enum(["WEEKLY", "MONTHLY"]),
+        bandId: z.string(),
+        name: z.string(),
+        frequency: z.enum(["DAILY", "WEEKLY", "MONTHLY"]),
         dayOfWeek: z.number().min(0).max(6).optional(), // 0=Dom, 6=Sáb
         weekOfMonth: z.number().min(-1).max(4).optional(), // 1=primeira, -1=última
-        time: z.date(),
+        time: z
+          .string()
+          .regex(
+            /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
+            "Formato de hora inválido (HH:MM)",
+          )
+          .optional(),
         startDate: z.date(),
         endDate: z.date(),
         notes: z.string().optional(),
-        createdById: z.string(),
         participants: z.array(
           z.object({
-            userId: z.string(),
+            participantId: z.string(),
             instrument: z.string(),
           }),
         ),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { participants, ...configData } = input;
+      const { participants, name, ...configData } = input;
+      const { session } = ctx;
+
+      if (!session?.user) {
+        throw new Error("User must be logged");
+      }
 
       // Criar configuração de recorrência
       const recurrenceConfig = await ctx.db.recurrenceConfig.create({
         data: {
           ...configData,
+          createdById: session.user.id,
           participants: {
             create: participants.map((p) => ({
-              participantId: p.userId,
+              participantId: p.participantId,
               instrument: p.instrument,
             })),
           },
@@ -55,20 +68,29 @@ export const recurrenceRouter = createTRPCRouter({
         endDate: input.endDate,
       });
 
+      let timeDate = null;
+      if (input.time) {
+        const [hours, minutes] = input.time.split(":").map(Number);
+        timeDate = new Date();
+        timeDate.setHours(hours, minutes, 0, 0);
+      }
+
       // Criar escalas para cada data
       const schedules = await Promise.all(
         dates.map((date) =>
           ctx.db.schedule.create({
             data: {
+              createdById: session.user.id,
+              bandId: input.bandId,
+              name,
               date,
-              time: input.time,
+              time: timeDate,
               recurrenceType: "RECURRING",
               recurrenceGroupId: recurrenceConfig.id,
-              createdById: input.createdById,
               notes: input.notes,
               participants: {
                 create: participants.map((p) => ({
-                  participantId: p.userId,
+                  participantId: p.participantId,
                   instrument: p.instrument,
                 })),
               },
@@ -85,40 +107,44 @@ export const recurrenceRouter = createTRPCRouter({
     }),
 
   // Listar todas as configurações de recorrência
-  getAll: publicProcedure.query(async ({ ctx }) => {
-    return await ctx.db.recurrenceConfig.findMany({
-      include: {
-        participants: {
-          include: {
-            participant: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
+  getAll: publicProcedure
+    .input(z.object({ bandId: z.string() }))
+    .query(async ({ input, ctx }) => {
+      const { bandId } = input;
+      return await ctx.db.recurrenceConfig.findMany({
+        where: { bandId },
+        include: {
+          participants: {
+            include: {
+              participant: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
               },
             },
           },
-        },
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          schedules: {
+            select: {
+              id: true,
+              date: true,
+              status: true,
+            },
+            orderBy: {
+              date: "asc",
+            },
           },
         },
-        schedules: {
-          select: {
-            id: true,
-            date: true,
-            status: true,
-          },
-          orderBy: {
-            date: "asc",
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-  }),
+        orderBy: { createdAt: "desc" },
+      });
+    }),
 
   // Buscar por ID
   getById: publicProcedure

@@ -12,14 +12,14 @@ type ParticipantProps = {
   id: string;
   name: string;
   whatsapp: string;
-  functions: string[];
+  instruments: string[];
 };
 
 export const CreatedParticipant = ({
   id,
   name,
   whatsapp,
-  functions,
+  instruments,
 }: ParticipantProps) => {
   return (
     <div
@@ -38,9 +38,9 @@ export const CreatedParticipant = ({
           </a>
         </div>
 
-        {functions.length > 0 && (
+        {instruments.length > 0 && (
           <ul className="flex list-none items-center gap-2">
-            {functions.map((func) => (
+            {instruments.map((func) => (
               <Tooltip key={func}>
                 <TooltipTrigger className="bg-accent mr-2 inline-flex items-center justify-center rounded-md p-2 shadow-md">
                   {instrumentsIcons[func as Instrument]}

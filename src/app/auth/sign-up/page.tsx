@@ -72,8 +72,6 @@ export default function SignUp() {
   const { mutateAsync: createUser, isPending: loading } =
     api.user.create.useMutation();
 
-  const { mutateAsync: updateUser } = api.user.update.useMutation();
-
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {

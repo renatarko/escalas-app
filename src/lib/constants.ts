@@ -1,3 +1,21 @@
+export const daysOfWeekOptions = [
+  { value: "0", label: "Domingo" },
+  { value: "1", label: "Segunda" },
+  { value: "2", label: "Terça" },
+  { value: "3", label: "Quarta" },
+  { value: "4", label: "Quinta" },
+  { value: "5", label: "Sexta" },
+  { value: "6", label: "Sábado" },
+];
+
+export const weeksOfMonthOptions = [
+  { value: "1", label: "1ª semana" },
+  { value: "2", label: "2ª semana" },
+  { value: "3", label: "3ª semana" },
+  { value: "4", label: "4ª semana" },
+  { value: "5", label: "Última semana" },
+];
+
 export const instrumentsIcons = {
   guitar: "🪕",
   electricGuitar: "🎸",
@@ -7,6 +25,8 @@ export const instrumentsIcons = {
   bass: "🎸",
   percussion: "🪘",
   saxophone: "🎷",
+  soundTechnician: "🎛️",
+  media: "🖥️",
 };
 
 export const instrumentOptions = [
@@ -29,6 +49,16 @@ export const instrumentOptions = [
     value: "saxophone",
     label: "Saxofone",
     icon: instrumentsIcons.saxophone,
+  },
+  {
+    value: "soundTechnician",
+    label: "Técnico de som",
+    icon: instrumentsIcons.soundTechnician,
+  },
+  {
+    value: "media",
+    label: "Mídia",
+    icon: instrumentsIcons.media,
   },
 ];
 

@@ -12,13 +12,16 @@ const participantSchema = z.object({
 
 // Schema para escala única
 const createSingleScheduleSchema = z.object({
+  bandId: z.string(),
+  name: z.string(),
   date: z.date(),
   time: z
     .string()
     .regex(
       /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
       "Formato de hora inválido (HH:MM)",
-    ),
+    )
+    .optional(),
   notes: z.string().optional(),
   participants: z
     .array(participantSchema)
@@ -27,6 +30,8 @@ const createSingleScheduleSchema = z.object({
 
 // Schema para escala recorrente
 const createRecurringScheduleSchema = z.object({
+  bandId: z.string(),
+  name: z.string(),
   frequency: z.nativeEnum(RecurrenceFrequency),
   dayOfWeek: z.number().int().min(0).max(6).optional(),
   weekOfMonth: z.number().int().min(1).max(5).optional(),
@@ -35,7 +40,8 @@ const createRecurringScheduleSchema = z.object({
     .regex(
       /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
       "Formato de hora inválido (HH:MM)",
-    ),
+    )
+    .optional(),
   startDate: z.date(),
   endDate: z.date(),
   notes: z.string().optional(),
@@ -49,16 +55,21 @@ export const scheduleRouter = createTRPCRouter({
   createSingle: protectedProcedure
     .input(createSingleScheduleSchema)
     .mutation(async ({ ctx, input }) => {
-      const { date, time, notes, participants } = input;
+      const { bandId, date, time, notes, participants, name } = input;
 
       // Converter string de tempo para DateTime
-      const [hours, minutes] = time.split(":").map(Number);
-      const timeDate = new Date();
-      timeDate.setHours(hours, minutes, 0, 0);
+      let timeDate = null;
+      if (time) {
+        const [hours, minutes] = time.split(":").map(Number);
+        timeDate = new Date();
+        timeDate.setHours(hours, minutes, 0, 0);
+      }
 
       try {
         const schedule = await ctx.db.schedule.create({
           data: {
+            bandId,
+            name,
             date,
             time: timeDate,
             notes,
@@ -99,6 +110,7 @@ export const scheduleRouter = createTRPCRouter({
           schedule,
         };
       } catch (error) {
+        console.log(`${error} "Erro ao criar escala"`);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Erro ao criar escala",
@@ -119,6 +131,8 @@ export const scheduleRouter = createTRPCRouter({
         endDate,
         notes,
         participants,
+        bandId,
+        name,
       } = input;
 
       // Validações
@@ -148,14 +162,17 @@ export const scheduleRouter = createTRPCRouter({
       }
 
       // Converter string de tempo para DateTime
-      const [hours, minutes] = time.split(":").map(Number);
-      const timeDate = new Date();
-      timeDate.setHours(hours, minutes, 0, 0);
-
+      let timeDate = null;
+      if (time) {
+        const [hours, minutes] = time.split(":").map(Number);
+        timeDate = new Date();
+        timeDate.setHours(hours, minutes, 0, 0);
+      }
       try {
         // Criar configuração de recorrência
         const recurrenceConfig = await ctx.db.recurrenceConfig.create({
           data: {
+            bandId,
             frequency,
             dayOfWeek,
             weekOfMonth,
@@ -187,6 +204,8 @@ export const scheduleRouter = createTRPCRouter({
           scheduleDates.map((date) =>
             ctx.db.schedule.create({
               data: {
+                bandId,
+                name,
                 date,
                 time: timeDate,
                 notes,
@@ -210,6 +229,7 @@ export const scheduleRouter = createTRPCRouter({
           schedulesCreated: schedules.length,
         };
       } catch (error) {
+        console.log({ error });
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Erro ao criar escalas recorrentes",
@@ -221,16 +241,18 @@ export const scheduleRouter = createTRPCRouter({
   list: protectedProcedure
     .input(
       z.object({
+        bandId: z.string(),
         startDate: z.date().optional(),
         endDate: z.date().optional(),
         status: z.enum(["PENDING", "CONFIRMED", "CANCELLED"]).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
-      const { startDate, endDate, status } = input;
+      const { startDate, endDate, status, bandId } = input;
 
       const schedules = await ctx.db.schedule.findMany({
         where: {
+          bandId,
           ...(startDate && { date: { gte: startDate } }),
           ...(endDate && { date: { lte: endDate } }),
           ...(status && { status }),

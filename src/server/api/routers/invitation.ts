@@ -4,7 +4,6 @@ import { TRPCError } from "@trpc/server";
 import { v4 as uuidv4 } from "uuid"; // For generating unique tokens
 import { addDays } from "date-fns"; // For setting expiration dates
 import { getData, sendEmail } from "@/lib/mailer";
-import { CreateScaleForm } from "@/app/_components/create-scale-form";
 import { InviteEmailTemplate } from "@/app/_components/emails/invite";
 import { BandRole } from "@prisma/client";
 
@@ -14,9 +13,9 @@ const createInvitationSchema = z.object({
   email: z.string().email(),
   role: z.enum([BandRole.ADMIN, BandRole.MEMBER]),
   // name: z.string().optional(),
-  // instruments: z
-  //   .array(z.string())
-  //   .min(1, "At least one instrument is required"),
+  instruments: z
+    .array(z.string())
+    .min(1, "At least one instrument is required"),
 });
 
 const acceptInvitationSchema = z.object({
@@ -37,8 +36,7 @@ export const invitationRouter = createTRPCRouter({
   create: protectedProcedure
     .input(createInvitationSchema)
     .mutation(async ({ ctx, input }) => {
-      // const { bandId, email, name, instruments } = input;
-      const { bandId, email, role } = input;
+      const { bandId, email, role, instruments } = input;
       const {
         session: {
           user: { id: userId },
@@ -108,7 +106,7 @@ export const invitationRouter = createTRPCRouter({
           bandId,
           email,
           // name,
-          // instruments,
+          instruments,
           status: "PENDING",
           token,
           role,
