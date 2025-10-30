@@ -48,10 +48,15 @@ type FormData = z.infer<typeof formSchema>;
 
 export const CreateParticipantForm = () => {
   const [data, setData] = React.useState<FormData | null>(null);
+  const utils = api.useUtils();
 
   const { bandId } = useFindCurrentBandId();
 
-  const { mutateAsync: createInvitation } = api.invitation.create.useMutation();
+  const { mutateAsync: createInvitation } = api.invitation.create.useMutation({
+    onSuccess: async () => {
+      await utils.invitation.getPendingInvitations.invalidate();
+    },
+  });
 
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -104,10 +109,6 @@ export const CreateParticipantForm = () => {
           onSubmit={form.handleSubmit(onSubmit)}
           className="bg-accent space-y-4 rounded-lg p-4"
         >
-          <h5 className="flex items-center gap-2 font-semibold">
-            <UserPlus className="size-4" />
-            Convidar Integrante
-          </h5>
           <div className="flex flex-col">
             {/* <FormField
               control={form.control}

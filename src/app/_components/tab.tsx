@@ -3,7 +3,7 @@
 import { CreateParticipantForm } from "./create-participant-form";
 import { TabsContentCustom } from "./tab-content-custom";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
-import { Calendar, Users } from "lucide-react";
+import { Calendar, CirclePlus, Users2 } from "lucide-react";
 import { ListParticipants } from "./list-participants";
 import { ListSchedule } from "./list-schedule";
 import ScheduleForm from "./schedule-form";
@@ -18,24 +18,39 @@ export function Tab() {
           </TabsTrigger>
           <TabsTrigger
             className="h-full w-full rounded-none"
-            value="invitations"
+            value="create-scale"
           >
-            <Users />
+            <CirclePlus /> Criar Escala
+          </TabsTrigger>
+          <TabsTrigger
+            className="h-full w-full rounded-none"
+            value="participants"
+          >
+            <Users2 />
             Participantes
           </TabsTrigger>
+          <TabsTrigger
+            className="h-full w-full rounded-none"
+            value="invitations"
+          >
+            <Users2 />
+            Convites
+          </TabsTrigger>
         </TabsList>
-        <TabsContentCustom title="Gerenciar Escalas" value="scales">
+        <TabsContentCustom title="Criar Escala" value="create-scale">
           <ScheduleForm />
+        </TabsContentCustom>
 
+        <TabsContentCustom title="Gerenciar Escalas" value="scales">
           <ListSchedule />
         </TabsContentCustom>
 
-        <TabsContentCustom title="Gerenciar Integrantes" value="invitations">
+        <TabsContentCustom title="Gerenciar Integrantes" value="participants">
+          <ListParticipants />
+        </TabsContentCustom>
+
+        <TabsContentCustom title="Convidar Integrantes" value="invitations">
           <CreateParticipantForm />
-          <div className="mt-6 space-y-4">
-            <h4 className="font-semibold">Todos os Participantes</h4>
-            <ListParticipants />
-          </div>
         </TabsContentCustom>
       </Tabs>
     </div>

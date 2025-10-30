@@ -304,6 +304,26 @@ export const invitationRouter = createTRPCRouter({
       });
     }),
 
+  getPendingInvitations: protectedProcedure
+    .input(z.object({ bandId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const { bandId } = input;
+
+      const invitations = await ctx.db.bandInvitation.findMany({
+        where: { bandId, status: { not: "ACCEPTED" } },
+        select: {
+          name: true,
+          instruments: true,
+          email: true,
+          status: true,
+          role: true,
+          invitedBy: { select: { name: true } },
+        },
+      });
+
+      return invitations;
+    }),
+
   // Get invitation by token (public, no auth required)
   getByToken: publicProcedure
     .input(z.object({ token: z.string() }))

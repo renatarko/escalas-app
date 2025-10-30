@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { Users, RefreshCw, AlertCircle, Trash } from "lucide-react";
 import z from "zod";
@@ -224,7 +226,7 @@ export default function ScheduleForm() {
           bandId: bandId,
           name: data.scaleName,
           date: data.date!,
-          time: new Date(),
+          time: "19:00",
           participants: participantsPayload,
           notes: data.notes,
         });
@@ -247,7 +249,7 @@ export default function ScheduleForm() {
           frequency: data.frequency!,
           startDate: data.startDate!,
           endDate: data.endDate!,
-          time: new Date(),
+          time: undefined,
           dayOfWeek: data.daysOfWeek ? Number(data.daysOfWeek) : undefined,
           weekOfMonth: data.weekOfMonth ? Number(data.weekOfMonth) : undefined,
           participants: participantsPayload,
@@ -305,17 +307,7 @@ export default function ScheduleForm() {
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="bg-card rounded-2xl p-4 shadow-xl sm:p-8"
-      >
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold">Criar Nova Escala</h2>
-          <p className="text-muted-foreground">
-            Configure escalas únicas ou recorrentes para sua banda
-          </p>
-        </div>
-
+      <form onSubmit={form.handleSubmit(onSubmit)} className="bg-card mt-4">
         <div className="space-y-6">
           <FormField
             control={form.control}

@@ -89,6 +89,44 @@ export const bandRouter = createTRPCRouter({
       }
     }),
 
+  getByUserId: protectedProcedure
+    .input(z.object({ userId: z.string(), nickname: z.string() }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.session.user.id) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "User must be logged in",
+        });
+      }
+
+      try {
+        const userIsOwnerOrAdmin = await ctx.db.band.findFirst({
+          where: {
+            nickname: input.nickname,
+            members: {
+              some: {
+                userId: input.userId,
+                role: {
+                  not: "MEMBER",
+                },
+              },
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        return Boolean(userIsOwnerOrAdmin);
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to fetch band",
+          cause: error,
+        });
+      }
+    }),
+
   getBands: publicProcedure.query(async ({ ctx }) => {
     if (!ctx.session) {
       return [];

@@ -29,6 +29,27 @@ export const memberRouter = createTRPCRouter({
       };
     }),
 
+  getUserMembershipByUserId: protectedProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const member = await ctx.db.bandMember.findMany({
+        where: { userId: input.userId },
+      });
+
+      const hasBand = await ctx.db.band.findFirst({
+        where: { createdById: input.userId },
+      });
+
+      return {
+        isMember: Boolean(member),
+        hasBand: Boolean(hasBand),
+      };
+    }),
+
   getBandMembers: protectedProcedure
     .input(
       z.object({

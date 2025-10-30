@@ -2,15 +2,13 @@
 
 import {
   Music,
-  PlusCircle,
   CalendarDays,
   Users2,
   Calendar,
   CirclePlus,
 } from "lucide-react";
-import Link from "next/link";
-import { Button } from "../_components/ui/button";
 import { CardInfo } from "../_components/ui/card-info";
+import { CreateBandDialog } from "../_components/create-band-dialog";
 
 export default function EmptyBandsPage() {
   return (
@@ -31,15 +29,7 @@ export default function EmptyBandsPage() {
           facilmente suas escalas e participantes.
         </p>
 
-        <Link href="/bands/new">
-          <Button
-            size="lg"
-            className="bg-teal-700 px-8 text-white hover:bg-teal-800"
-          >
-            <PlusCircle className="mr-2 h-5 w-5" />
-            Criar minha primeira banda
-          </Button>
-        </Link>
+        <CreateBandDialog label="Criar Banda/Grupo" />
       </section>
 
       <section className="mt-24 space-y-4 text-center">

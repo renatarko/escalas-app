@@ -1,3 +1,5 @@
+import type { InvitationStatus } from "@prisma/client";
+
 export const daysOfWeekOptions = [
   { value: "0", label: "Domingo" },
   { value: "1", label: "Segunda" },
@@ -61,5 +63,19 @@ export const instrumentOptions = [
     icon: instrumentsIcons.media,
   },
 ];
+
+export const memberRoleLabel = {
+  OWNER: "Proprietário",
+  ADMIN: "Administrador",
+  MEMBER: "Integrante",
+};
+
+export const invitationStatusLabel: Record<InvitationStatus, string> = {
+  PENDING: "Pendente",
+  DECLINED: "Rejeitado",
+  EXPIRED: "Expirado",
+  CANCELLED: "Cancelado",
+  ACCEPTED: "Aceito",
+};
 
 export const WHATSAPP_BASE_URL = `https://wa.me`;
