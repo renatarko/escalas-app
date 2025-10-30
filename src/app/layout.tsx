@@ -7,6 +7,7 @@ import { TRPCReactProvider } from "@/trpc/react";
 import { Toaster } from "./_components/ui/sonner";
 import { Header } from "./_components/header";
 import { SessionProvider } from "next-auth/react";
+import { auth } from "@/server/auth";
 
 export const metadata: Metadata = {
   title: "Escalas App",
@@ -20,14 +21,15 @@ const poppins = Poppins({
   weight: ["300", "400", "700"],
 });
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const session = await auth();
   return (
     <html lang="en" className={`${poppins.variable}`}>
       <body className="bg-linear-to-b from-slate-50 to-white">
         <TRPCReactProvider>
-          <SessionProvider>
+          <SessionProvider session={session}>
             <Header />
             {children}
           </SessionProvider>

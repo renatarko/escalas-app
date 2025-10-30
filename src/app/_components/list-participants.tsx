@@ -1,3 +1,5 @@
+"use client";
+
 import { useFindManyMembers } from "@/lib/hooks/members";
 import { CreatedParticipant } from "./created-participant";
 import { Spinner } from "./ui/spinner";
@@ -8,7 +10,7 @@ export const ListParticipants = () => {
   if (isLoading) {
     return (
       <div className="flex w-full items-center justify-center">
-        <Spinner />
+        <Spinner className="size-10" />
       </div>
     );
   }

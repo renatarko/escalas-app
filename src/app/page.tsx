@@ -1,10 +1,24 @@
-import { HydrateClient } from "@/trpc/server";
-import { ArrowRight, CalendarDays, Users2 } from "lucide-react";
+import { api, HydrateClient } from "@/trpc/server";
+import { ArrowRight, CalendarDays, Settings, Users2 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "./_components/ui/button";
 import { CardInfo } from "./_components/ui/card-info";
+import { auth } from "@/server/auth";
+
+async function getMemberData(userId?: string) {
+  if (!userId) {
+    return null;
+  }
+
+  const data = await api.bandMember.getUserMembershipByUserId({ userId });
+  return data;
+}
 
 export default async function Home() {
+  const session = await auth();
+
+  const data = await getMemberData(session?.user.id);
+
   return (
     <HydrateClient>
       <main className="container mx-auto flex min-h-screen flex-col items-center justify-center space-y-8 pt-28 pb-12">
@@ -19,21 +33,47 @@ export default async function Home() {
               complicações.
             </p>
           </div>
-          <div className="flex items-center justify-center gap-4">
-            <Link href="/register">
+          {!session?.user && (
+            <div className="flex items-center justify-center gap-4">
+              <Link href="/register">
+                <Button
+                  size="lg"
+                  className="bg-teal-700 px-8 text-white hover:bg-teal-800"
+                >
+                  Criar Conta
+                </Button>
+              </Link>
+              <Link href="/sing-in">
+                <Button size="lg" variant="outline" className="px-10">
+                  Entrar
+                </Button>
+              </Link>
+            </div>
+          )}
+
+          {data?.isMember && !data?.hasBand && (
+            <Link href="/on-boarding">
               <Button
                 size="lg"
-                className="bg-teal-700 px-8 text-white hover:bg-teal-800"
+                className="bg-teal-700 text-white hover:bg-teal-800"
               >
-                Criar Conta
+                <Settings className="size-4" />
+                Começar a Gerenciar
               </Button>
             </Link>
-            <Link href="/sing-in">
-              <Button size="lg" variant="outline" className="px-10">
-                Entrar
+          )}
+
+          {data?.hasBand && (
+            <Link href="/admin/manager">
+              <Button
+                size="lg"
+                className="bg-teal-700 text-white hover:bg-teal-800"
+              >
+                <Settings className="size-4" />
+                Gerenciar Escalas
               </Button>
             </Link>
-          </div>
+          )}
         </section>
 
         <section className="grid grid-cols-1 gap-8 px-6 py-8 pb-16 md:grid-cols-3">

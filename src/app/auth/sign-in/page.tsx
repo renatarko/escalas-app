@@ -1,6 +1,6 @@
 "use client";
-import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { signIn, useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 import { redirect, useRouter, useSearchParams } from "next/navigation";
 import {
   Form,
@@ -72,11 +72,20 @@ export default function SignIn() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/";
   const emailParam = searchParams.get("invite");
   const emailFromInvite = emailParam ? decodeURIComponent(emailParam) : null;
+
+  const { data: session } = useSession();
+
+  const { data: isBandMember } =
+    api.bandMember.getUserMembershipByUserId.useQuery(
+      { userId: session?.user.id ?? "" },
+      { enabled: !!session },
+    );
 
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -121,11 +130,12 @@ export default function SignIn() {
       }
 
       if (result?.ok) {
+        toast.dismiss(toastId);
         toast.success("Login realizado com sucesso!");
-        setTimeout(() => {
-          router.replace("/");
-        }, 1500);
+        return;
       }
+
+      return router.push(callbackUrl || "/");
     } catch (error) {
       toast.dismiss(toastId);
       toast.error("Erro inesperado ao tentar login.");
@@ -135,6 +145,20 @@ export default function SignIn() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (isBandMember && !emailFromInvite) {
+      if (isBandMember.hasBand) {
+        router.push("/admin/manager");
+        return;
+      }
+
+      if (isBandMember.isMember) {
+        router.push("/on-boarding");
+        return;
+      }
+    }
+  }, [isBandMember, router, emailFromInvite]);
 
   return (
     <div className="bg-chart-2 flex min-h-screen items-center justify-center px-4 py-12 sm:px-6 lg:px-8">

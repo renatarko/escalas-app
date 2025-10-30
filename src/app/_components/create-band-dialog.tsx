@@ -16,27 +16,35 @@ import {
 } from "./ui/dialog";
 import { Label } from "./ui/label";
 import { toast } from "sonner";
+import { CirclePlus } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { setBandInCookie } from "@/lib/utils/getCurrentBandFromCookie";
 
-export const CreateBandDialog = () => {
+export const CreateBandDialog = ({ label }: { label: string }) => {
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [name, setName] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
 
-  const { mutateAsync: createBand } = api.band.create.useMutation();
+  const { mutateAsync: createBand, isPending: loading } =
+    api.band.create.useMutation();
+  const utils = api.useUtils();
 
   const onCreateBand = async () => {
     setError("");
-    setLoading(true);
     const toastId = toast.loading("Criando banda/grupo...");
 
-    if (!name) {
+    if (name.length === 0) {
       setError("Campo deve ser preenchido");
+      toast.dismiss(toastId);
       return;
     }
 
     if (name.length < 3) {
       setError("Nome deve conter mínimo 3 caracteres");
+      toast.dismiss(toastId);
       return;
     }
 
@@ -45,6 +53,14 @@ export const CreateBandDialog = () => {
       if (band) {
         toast.success("Banda criada com sucesso");
         setOpen(false);
+        setBandInCookie(band.nickname);
+
+        if (pathname === "/admin/manager") {
+          await utils.band.getBands.invalidate();
+          return;
+        }
+
+        router.push("/admin/manager");
       }
     } catch (error) {
       const message =
@@ -55,14 +71,21 @@ export const CreateBandDialog = () => {
       toast.error(message);
     } finally {
       toast.dismiss(toastId);
-      setLoading(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button aria-controls="create-band-dialog">Criar Banda</Button>
+        <Button
+          aria-controls="create-band-dialog"
+          className="bg-teal-700 px-8 text-white hover:bg-teal-800"
+          size="lg"
+          disabled={loading}
+        >
+          <CirclePlus className="size-4" />
+          {label}
+        </Button>
       </DialogTrigger>
       <DialogContent id="create-band-dialog" className="space-y-1 p-4">
         <DialogHeader>

@@ -338,6 +338,31 @@ export const scheduleRouter = createTRPCRouter({
 
       return schedule;
     }),
+
+  delete: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const createdById = ctx.session.user.id;
+      const schedule = await ctx.db.schedule.findUnique({
+        where: { id: input.id, createdById },
+        select: { id: true },
+      });
+
+      if (!schedule) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Escala não encontrada",
+        });
+      }
+
+      await ctx.db.$transaction(async (tx) => {
+        await tx.schedule.delete({ where: { id: schedule.id } });
+      });
+
+      return {
+        deleted: true,
+      };
+    }),
 });
 
 // Função auxiliar para gerar datas das escalas

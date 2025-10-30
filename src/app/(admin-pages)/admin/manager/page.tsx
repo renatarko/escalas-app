@@ -1,18 +1,51 @@
 "use client";
 
+import { CreateBandDialog } from "@/app/_components/create-band-dialog";
+import { Badge } from "@/app/_components/ui/badge";
 import { Button } from "@/app/_components/ui/button";
-import { api } from "@/trpc/react";
 import {
-  PlusCircle,
-  Music2,
-  CalendarDays,
-  Settings,
-  ArrowRight,
-} from "lucide-react";
-import Link from "next/link";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/app/_components/ui/dialog";
+import { Spinner } from "@/app/_components/ui/spinner";
+import { memberRoleLabel } from "@/lib/constants";
+import {
+  getCurrentBandFromCookie,
+  setBandInCookie,
+} from "@/lib/utils/getCurrentBandFromCookie";
+import { api } from "@/trpc/react";
+import { Music2, Settings } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { redirect } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function DashboardHome() {
+  const { data: session } = useSession();
   const { data: bands, isPending } = api.band.getBands.useQuery();
+
+  const [redirecting, setRedirecting] = useState(false);
+  const [nickname, setNickname] = useState("");
+  const currentNickname = getCurrentBandFromCookie();
+
+  const handleBandChange = (nickname: string) => {
+    setNickname(nickname);
+    setBandInCookie(nickname);
+    setRedirecting(true);
+  };
+
+  useEffect(() => {
+    if (redirecting) {
+      if (currentNickname === nickname) {
+        setTimeout(() => {
+          redirect("/admin");
+        }, 1200);
+      }
+    }
+  }, [redirecting, nickname, currentNickname]);
 
   return (
     <div className="pt-8">
@@ -26,18 +59,13 @@ export default function DashboardHome() {
       </section>
 
       <section className="mb-16 flex justify-center gap-4">
-        <Link href="/bands/new">
-          <Button className="bg-teal-700 text-white hover:bg-teal-800">
-            <PlusCircle className="mr-2 h-5 w-5" />
-            Nova Banda
-          </Button>
-        </Link>
-        <Link href="/schedules/new">
+        <CreateBandDialog label="Nova Banda" />
+        {/* <Link href="/schedules/new">
           <Button variant="outline">
             <CalendarDays className="mr-2 h-5 w-5" />
             Criar Escala
           </Button>
-        </Link>
+        </Link> */}
       </section>
 
       {/* Lista de Bandas */}
@@ -70,24 +98,45 @@ export default function DashboardHome() {
                   </p>
                 </div>
                 <div className="flex items-center justify-between">
-                  <Link href={`/bands/${band.id}`}>
-                    <Button variant="outline" size="sm">
-                      <Settings className="mr-2 h-4 w-4" /> Gerenciar
-                    </Button>
-                  </Link>
-                  <Link href={`/bands/${band.id}/schedules`}>
-                    <Button
-                      size="sm"
-                      className="bg-teal-700 text-white hover:bg-teal-800"
-                    >
-                      Escalas <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBandChange(band.nickname)}
+                  >
+                    <Settings className="mr-2 h-4 w-4" /> Gerenciar
+                  </Button>
+
+                  {!!session?.user && (
+                    <Badge variant="secondary">
+                      {
+                        memberRoleLabel[
+                          band.members.find(
+                            (member) => member.userId === session.user.id,
+                          )?.role ?? "ADMIN"
+                        ]
+                      }
+                    </Badge>
+                  )}
                 </div>
               </div>
             ))}
         </div>
       </section>
+
+      <Dialog open={redirecting}>
+        <DialogTrigger />
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Carregando Banda</DialogTitle>
+            <DialogDescription>
+              Aguarde, estamos carregando os dados da sua Banda...
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex w-full items-center justify-center">
+            <Spinner className="size-8" />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
