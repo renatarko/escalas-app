@@ -89,12 +89,9 @@ export const bandRouter = createTRPCRouter({
       }
     }),
 
-  getBands: protectedProcedure.query(async ({ ctx }) => {
-    if (!ctx.session.user.id) {
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "User must be logged in",
-      });
+  getBands: publicProcedure.query(async ({ ctx }) => {
+    if (!ctx.session) {
+      return [];
     }
 
     try {
@@ -130,6 +127,7 @@ export const bandRouter = createTRPCRouter({
               },
             },
           },
+          schedules: true,
         },
       });
     } catch (error) {

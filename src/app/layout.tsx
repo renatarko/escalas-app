@@ -25,7 +25,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${poppins.variable}`}>
-      <body>
+      <body className="bg-linear-to-b from-slate-50 to-white">
         <TRPCReactProvider>
           <SessionProvider>
             <Header />
