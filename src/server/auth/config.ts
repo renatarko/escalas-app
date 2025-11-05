@@ -90,10 +90,7 @@ export const authConfig: NextAuthConfig = {
         password: { label: "Senha", type: "password" },
       },
 
-      async authorize(
-        credentials: Partial<Record<"email" | "password", unknown>> | undefined,
-        request?: Request,
-      ) {
+      async authorize(credentials) {
         const email =
           typeof credentials?.email === "string"
             ? credentials.email
@@ -188,7 +185,6 @@ export const authConfig: NextAuthConfig = {
       //   return token;
       // }
 
-      console.log("token", token);
       const dbUser = await db.user.findUnique({
         where: { email: token.email ?? "" },
         include: {

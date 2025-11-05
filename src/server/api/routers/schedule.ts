@@ -237,7 +237,72 @@ export const scheduleRouter = createTRPCRouter({
         });
       }
     }),
+  updateSingle: protectedProcedure
+    .input(
+      createSingleScheduleSchema.extend({
+        id: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, bandId, name, date, time, notes, participants } = input;
 
+      // Converter hora
+      let timeDate: Date | null = null;
+      if (time) {
+        const [hours = 0, minutes = 0] = time.split(":").map(Number);
+        timeDate = new Date();
+        timeDate.setHours(hours, minutes, 0, 0);
+      }
+
+      const existing = await ctx.db.schedule.findUnique({
+        where: { id },
+        include: { participants: true },
+      });
+
+      if (!existing) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Escala não encontrada",
+        });
+      }
+
+      try {
+        const updated = await ctx.db.schedule.update({
+          where: { id },
+          data: {
+            bandId,
+            name,
+            date,
+            time: timeDate,
+            notes,
+            participants: {
+              deleteMany: {}, // limpa todos
+              create: participants.map((p) => ({
+                participantId: p.participantId,
+                instrument: p.instrument,
+              })),
+            },
+          },
+          include: {
+            participants: {
+              include: {
+                participant: {
+                  select: { id: true, name: true, email: true, whatsapp: true },
+                },
+              },
+            },
+          },
+        });
+
+        return { success: true, schedule: updated };
+      } catch (error) {
+        console.error("Erro ao editar escala única:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Erro ao editar escala única",
+        });
+      }
+    }),
   // Listar escalas
   list: protectedProcedure
     .input(

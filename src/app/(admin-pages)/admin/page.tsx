@@ -2,7 +2,6 @@ import { auth } from "@/server/auth";
 import { CreateParticipantForm } from "@/app/_components/create-participant-form";
 import { ListParticipants } from "@/app/_components/list-participants";
 import { ListSchedule } from "@/app/_components/list-schedule";
-import ScheduleForm from "@/app/_components/schedule-form";
 import { TabsContentCustom } from "@/app/_components/tab-content-custom";
 import { Tabs, TabsList, TabsTrigger } from "@/app/_components/ui/tabs";
 import { CirclePlus, Users2, Calendar } from "lucide-react";
@@ -11,6 +10,7 @@ import { api } from "@/trpc/server";
 import { cookies } from "next/headers";
 import { ListInvite } from "@/app/_components/list-invite";
 import { ScrollArea, ScrollBar } from "@/app/_components/ui/scroll-area";
+import { CreateSchedule } from "@/app/_components/create-schedule";
 
 const getCurrentBandFromCookieServer = async () => {
   const cookieStore = cookies();
@@ -75,7 +75,7 @@ export default async function Admin() {
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
         <TabsContentCustom title="Criar Escala" value="create-scale">
-          <ScheduleForm />
+          <CreateSchedule />
         </TabsContentCustom>
 
         <TabsContentCustom title="Gerenciar Escalas" value="scales">

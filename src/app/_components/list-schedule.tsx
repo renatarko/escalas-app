@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { AlertCustom } from "./custom-alert";
 import { useState } from "react";
 import type { ScheduleStatus } from "@prisma/client";
+import { useRouter } from "next/navigation";
 
 type MenuOptionsProps = {
   schedule: {
@@ -36,6 +37,8 @@ type MenuOptionsProps = {
 
 const MenuOptions = ({ schedule }: MenuOptionsProps) => {
   const { id } = schedule;
+
+  const router = useRouter();
 
   const [modals, setModals] = useState({ delete: false });
 
@@ -58,6 +61,10 @@ const MenuOptions = ({ schedule }: MenuOptionsProps) => {
     }
   };
 
+  const handleEdit = () => {
+    router.push(`/admin/schedule/${schedule.id}`);
+  };
+
   return (
     <>
       <DropdownMenu modal={false}>
@@ -67,15 +74,15 @@ const MenuOptions = ({ schedule }: MenuOptionsProps) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={handleEdit}>
             <Pencil />
             Editar
           </DropdownMenuItem>
-          <DropdownMenuItem>
+          <DropdownMenuItem disabled>
             <Check />
             Confirmar
           </DropdownMenuItem>
-          <DropdownMenuItem>
+          <DropdownMenuItem disabled>
             <Send />
             Notificar
           </DropdownMenuItem>
