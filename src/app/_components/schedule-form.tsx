@@ -226,7 +226,7 @@ export default function ScheduleForm() {
           bandId: bandId,
           name: data.scaleName,
           date: data.date!,
-          time: "19:00",
+          time: data.time,
           participants: participantsPayload,
           notes: data.notes,
         });
@@ -249,7 +249,7 @@ export default function ScheduleForm() {
           frequency: data.frequency!,
           startDate: data.startDate!,
           endDate: data.endDate!,
-          time: undefined,
+          time: data.time,
           dayOfWeek: data.daysOfWeek ? Number(data.daysOfWeek) : undefined,
           weekOfMonth: data.weekOfMonth ? Number(data.weekOfMonth) : undefined,
           participants: participantsPayload,

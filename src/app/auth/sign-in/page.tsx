@@ -154,7 +154,7 @@ export default function SignIn() {
       }
 
       if (isBandMember.isMember) {
-        router.push("/on-boarding");
+        router.push("/onboarding");
         return;
       }
     }

@@ -25,13 +25,20 @@ import {
 import { toast } from "sonner";
 import { AlertCustom } from "./custom-alert";
 import { useState } from "react";
+import type { ScheduleStatus } from "@prisma/client";
 
 type MenuOptionsProps = {
-  scheduleId: string;
+  schedule: {
+    id: string;
+    status: ScheduleStatus;
+  };
 };
 
-const MenuOptions = ({ scheduleId }: MenuOptionsProps) => {
+const MenuOptions = ({ schedule }: MenuOptionsProps) => {
+  const { id } = schedule;
+
   const [modals, setModals] = useState({ delete: false });
+
   const utils = api.useUtils().schedule.list;
 
   const { mutateAsync: deleteSchedule, isPending } =
@@ -42,9 +49,8 @@ const MenuOptions = ({ scheduleId }: MenuOptionsProps) => {
     });
 
   const handleDelete = async () => {
-    console.log({ scheduleId });
     try {
-      await deleteSchedule({ id: scheduleId });
+      await deleteSchedule({ id });
       toast.success("Escala excluída com sucesso");
     } catch (error) {
       console.log(error);
@@ -102,14 +108,13 @@ export const ListSchedule = () => {
   );
 
   return (
-    <div className="mt-4 grid gap-4 sm:grid-cols-2">
-      {isPending ||
-        (isLoading && (
-          <div className="bg-card h-20 w-20 animate-ping p-8"></div>
-        ))}
+    <div className="mt-4 grid gap-4 md:grid-cols-2">
+      {(isPending || isLoading) && (
+        <div className="bg-muted col-span-full h-20 w-full animate-pulse rounded-lg border p-8"></div>
+      )}
 
-      {!data && (!isPending || !isLoading) && (
-        <p className="col-span-full font-semibold">
+      {data?.length === 0 && (!isPending || !isLoading) && (
+        <p className="text-muted-foreground col-span-full pb-4 text-center">
           Não há escalas, crie agora sua primeira escala
         </p>
       )}
@@ -131,7 +136,7 @@ export const ListSchedule = () => {
                   </p>
                 </div>
 
-                <div className="flex items-center justify-end space-x-4">
+                <div className="flex items-center justify-end space-x-2 sm:space-x-4">
                   <Badge
                     variant="secondary"
                     className={`${schedule.recurrenceType === "SINGLE" ? "bg-cyan-500/40" : "bg-purple-500/40"}`}
@@ -154,7 +159,7 @@ export const ListSchedule = () => {
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <MenuOptions scheduleId={schedule.id} />
+                  <MenuOptions schedule={schedule} />
                 </div>
               </div>
 
@@ -198,9 +203,12 @@ export const ListSchedule = () => {
                         {participant.confirmed === false && "Rejeitado"}
                         {participant.confirmed === null && "Pendente"}
                       </Badge>
-                      <Button variant="outline" size="icon-sm">
-                        <Send className="size-4 text-green-600" />
-                      </Button>
+
+                      {!participant.confirmed && (
+                        <Button variant="outline" size="icon-sm">
+                          <Send className="size-4 text-green-600" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}

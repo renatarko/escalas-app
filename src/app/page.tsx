@@ -35,7 +35,7 @@ export default async function Home() {
           </div>
           {!session?.user && (
             <div className="flex items-center justify-center gap-4">
-              <Link href="/register">
+              <Link href="/auth/sign-up">
                 <Button
                   size="lg"
                   className="bg-teal-700 px-8 text-white hover:bg-teal-800"
@@ -43,7 +43,7 @@ export default async function Home() {
                   Criar Conta
                 </Button>
               </Link>
-              <Link href="/sing-in">
+              <Link href="/auth/sign-in">
                 <Button size="lg" variant="outline" className="px-10">
                   Entrar
                 </Button>
@@ -52,7 +52,7 @@ export default async function Home() {
           )}
 
           {data?.isMember && !data?.hasBand && (
-            <Link href="/on-boarding">
+            <Link href="/onboarding">
               <Button
                 size="lg"
                 className="bg-teal-700 text-white hover:bg-teal-800"
