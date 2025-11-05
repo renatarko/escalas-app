@@ -10,6 +10,7 @@ import { Unauthorized } from "@/app/_components/unauthorized";
 import { api } from "@/trpc/server";
 import { cookies } from "next/headers";
 import { ListInvite } from "@/app/_components/list-invite";
+import { ScrollArea, ScrollBar } from "@/app/_components/ui/scroll-area";
 
 const getCurrentBandFromCookieServer = async () => {
   const cookieStore = cookies();
@@ -45,31 +46,34 @@ export default async function Admin() {
   return (
     <div className="flex w-full flex-col gap-6 rounded-lg shadow-lg">
       <Tabs defaultValue="scales" className="w-full gap-6">
-        <TabsList className="bg-muted/60 border-border h-20 w-full rounded-none border p-0">
-          <TabsTrigger className="h-full w-full rounded-none" value="scales">
-            <Calendar /> Escalas
-          </TabsTrigger>
-          <TabsTrigger
-            className="h-full w-full rounded-none"
-            value="create-scale"
-          >
-            <CirclePlus /> Criar Escala
-          </TabsTrigger>
-          <TabsTrigger
-            className="h-full w-full rounded-none"
-            value="participants"
-          >
-            <Users2 />
-            Participantes
-          </TabsTrigger>
-          <TabsTrigger
-            className="h-full w-full rounded-none"
-            value="invitations"
-          >
-            <Users2 />
-            Convites
-          </TabsTrigger>
-        </TabsList>
+        <ScrollArea className="w-full overflow-x-auto whitespace-nowrap md:overflow-x-visible">
+          <TabsList className="bg-muted/60 border-border h-20 w-full rounded-none border p-0">
+            <TabsTrigger className="h-full w-full rounded-none" value="scales">
+              <Calendar /> Escalas
+            </TabsTrigger>
+            <TabsTrigger
+              className="h-full w-full rounded-none"
+              value="create-scale"
+            >
+              <CirclePlus /> Criar Escala
+            </TabsTrigger>
+            <TabsTrigger
+              className="h-full w-full rounded-none"
+              value="participants"
+            >
+              <Users2 />
+              Participantes
+            </TabsTrigger>
+            <TabsTrigger
+              className="h-full w-full rounded-none"
+              value="invitations"
+            >
+              <Users2 />
+              Convites
+            </TabsTrigger>
+          </TabsList>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
         <TabsContentCustom title="Criar Escala" value="create-scale">
           <ScheduleForm />
         </TabsContentCustom>

@@ -10,8 +10,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 type ParticipantProps = {
   id: string;
-  name: string;
-  whatsapp: string;
+  name: string | null;
+  whatsapp: string | null;
   instruments: string[];
 };
 
