@@ -1,7 +1,7 @@
 import { api } from "@/trpc/server";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CheckCircle, LogIn, LogOut, MailOpen } from "lucide-react";
+import { CheckCircle, LogOut, MailOpen } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -57,13 +57,11 @@ const LoadingCard = ({ label }: { label: string }) => {
 };
 
 interface InvitePageProps {
-  params: {
-    token: string;
-  };
+  params: Promise<{ token: string }>;
 }
 
 export default async function InvitePage({ params }: InvitePageProps) {
-  const { token } = params;
+  const { token } = await params;
 
   const invite = await api.invitation.getByToken({ token });
   const isUserAuthenticated = await auth();

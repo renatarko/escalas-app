@@ -58,9 +58,9 @@ export const scheduleRouter = createTRPCRouter({
       const { bandId, date, time, notes, participants, name } = input;
 
       // Converter string de tempo para DateTime
-      let timeDate = null;
+      let timeDate: Date | null = null;
       if (time) {
-        const [hours, minutes] = time.split(":").map(Number);
+        const [hours = 0, minutes = 0] = time.split(":").map(Number);
         timeDate = new Date();
         timeDate.setHours(hours, minutes, 0, 0);
       }
@@ -110,7 +110,7 @@ export const scheduleRouter = createTRPCRouter({
           schedule,
         };
       } catch (error) {
-        console.log(`${error} "Erro ao criar escala"`);
+        console.error("Erro ao criar escala:", error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Erro ao criar escala",
@@ -162,12 +162,13 @@ export const scheduleRouter = createTRPCRouter({
       }
 
       // Converter string de tempo para DateTime
-      let timeDate = null;
+      let timeDate: Date | null = null;
       if (time) {
-        const [hours, minutes] = time.split(":").map(Number);
+        const [hours = 0, minutes = 0] = time.split(":").map(Number);
         timeDate = new Date();
         timeDate.setHours(hours, minutes, 0, 0);
       }
+
       try {
         // Criar configuração de recorrência
         const recurrenceConfig = await ctx.db.recurrenceConfig.create({
@@ -421,7 +422,7 @@ function getNthWeekdayOfMonth(
 ): Date | null {
   const firstDay = new Date(year, month, 1);
   let count = 0;
-  let current = new Date(firstDay);
+  const current = new Date(firstDay);
 
   while (current.getMonth() === month) {
     if (current.getDay() === dayOfWeek) {

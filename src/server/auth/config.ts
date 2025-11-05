@@ -90,13 +90,25 @@ export const authConfig: NextAuthConfig = {
         password: { label: "Senha", type: "password" },
       },
 
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+      async authorize(
+        credentials: Partial<Record<"email" | "password", unknown>> | undefined,
+        request?: Request,
+      ) {
+        const email =
+          typeof credentials?.email === "string"
+            ? credentials.email
+            : undefined;
+        const password =
+          typeof credentials?.password === "string"
+            ? credentials.password
+            : undefined;
+
+        if (!email || !password) {
           return null;
         }
 
         const user = await db.user.findUnique({
-          where: { email: credentials.email },
+          where: { email },
         });
 
         console.log("nao encontrou user no banco?", user);
@@ -116,10 +128,7 @@ export const authConfig: NextAuthConfig = {
           );
         }
 
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password as string,
-          user.password,
-        );
+        const isPasswordValid = await bcrypt.compare(password, user.password);
 
         if (!isPasswordValid) {
           console.log("Invalid password");

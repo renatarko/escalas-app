@@ -68,9 +68,9 @@ export const recurrenceRouter = createTRPCRouter({
         endDate: input.endDate,
       });
 
-      let timeDate = null;
+      let timeDate: Date | null = null;
       if (input.time) {
-        const [hours, minutes] = input.time.split(":").map(Number);
+        const [hours = 0, minutes = 0] = input.time.split(":").map(Number);
         timeDate = new Date();
         timeDate.setHours(hours, minutes, 0, 0);
       }

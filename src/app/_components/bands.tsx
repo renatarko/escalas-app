@@ -13,7 +13,6 @@ import {
   DialogTrigger,
 } from "./ui/dialog";
 import { Spinner } from "./ui/spinner";
-import { useSession } from "next-auth/react";
 
 type BandsProps = {
   bands: {
