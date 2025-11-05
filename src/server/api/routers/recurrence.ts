@@ -105,6 +105,136 @@ export const recurrenceRouter = createTRPCRouter({
         schedules,
       };
     }),
+  // Atualizar configuração de recorrência e recriar escalas futuras
+  update: publicProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        bandId: z.string(),
+        name: z.string(),
+        frequency: z.enum(["DAILY", "WEEKLY", "MONTHLY"]),
+        dayOfWeek: z.number().min(0).max(6).optional(),
+        weekOfMonth: z.number().min(-1).max(4).optional(),
+        time: z
+          .string()
+          .regex(
+            /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
+            "Formato de hora inválido (HH:MM)",
+          )
+          .optional(),
+        startDate: z.date(),
+        endDate: z.date(),
+        notes: z.string().optional(),
+        participants: z.array(
+          z.object({
+            participantId: z.string(),
+            instrument: z.string(),
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const {
+        id,
+        participants,
+        name,
+        frequency,
+        dayOfWeek,
+        weekOfMonth,
+        startDate,
+        endDate,
+        bandId,
+        notes,
+        time,
+      } = input;
+
+      if (!ctx.session) {
+        throw new Error("Usuário não logado, faça o Login e tente novamente");
+      }
+
+      if (endDate <= startDate) {
+        throw new Error("A data final deve ser posterior à data inicial.");
+      }
+
+      let timeDate: Date | null = null;
+      if (time) {
+        const [hours = 0, minutes = 0] = time.split(":").map(Number);
+        timeDate = new Date();
+        timeDate.setHours(hours, minutes, 0, 0);
+      }
+
+      // Atualiza a configuração principal
+      const updatedRecurrence = await ctx.db.recurrenceConfig.update({
+        where: { id },
+        data: {
+          bandId,
+          frequency,
+          dayOfWeek,
+          weekOfMonth,
+          startDate,
+          endDate,
+          time: timeDate,
+          notes,
+          participants: {
+            deleteMany: {},
+            create: participants.map((p) => ({
+              participantId: p.participantId,
+              instrument: p.instrument,
+            })),
+          },
+        },
+        include: {
+          participants: true,
+        },
+      });
+
+      // Deleta escalas futuras (mantém histórico passado)
+      await ctx.db.schedule.deleteMany({
+        where: {
+          recurrenceGroupId: id,
+          date: { gte: new Date() },
+        },
+      });
+
+      // Gera novas datas
+      const dates = generateRecurringSchedules({
+        frequency,
+        dayOfWeek,
+        weekOfMonth,
+        startDate,
+        endDate,
+      });
+
+      // Recria as escalas futuras
+      await Promise.all(
+        dates.map((date) =>
+          ctx.db.schedule.create({
+            data: {
+              bandId,
+              name,
+              date,
+              time: timeDate,
+              notes,
+              recurrenceType: "RECURRING",
+              recurrenceGroupId: id,
+              createdById: ctx.session.user.id,
+              participants: {
+                create: participants.map((p) => ({
+                  participantId: p.participantId,
+                  instrument: p.instrument,
+                })),
+              },
+            },
+          }),
+        ),
+      );
+
+      return {
+        success: true,
+        message: "Configuração e escalas futuras atualizadas com sucesso.",
+        recurrence: updatedRecurrence,
+      };
+    }),
 
   // Listar todas as configurações de recorrência
   getAll: publicProcedure

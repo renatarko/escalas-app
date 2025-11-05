@@ -9,7 +9,7 @@ import { BandRole } from "@prisma/client";
 
 // Zod schemas for input validation
 const createInvitationSchema = z.object({
-  bandId: z.string().cuid(),
+  bandId: z.string(),
   email: z.string().email(),
   role: z.enum([BandRole.ADMIN, BandRole.MEMBER]),
   // name: z.string().optional(),
@@ -28,7 +28,7 @@ const rejectInvitationSchema = z.object({
 
 const getInvitationsSchema = z.object({
   type: z.enum(["sent", "received"]).optional(),
-  bandId: z.string().cuid().optional(),
+  bandId: z.string().optional(),
 });
 
 export const invitationRouter = createTRPCRouter({
@@ -310,7 +310,7 @@ export const invitationRouter = createTRPCRouter({
       const { bandId } = input;
 
       const invitations = await ctx.db.bandInvitation.findMany({
-        where: { bandId, status: { not: "ACCEPTED" } },
+        where: { bandId },
         select: {
           name: true,
           instruments: true,

@@ -52,11 +52,12 @@ export const CreateParticipantForm = () => {
 
   const { bandId } = useFindCurrentBandId();
 
-  const { mutateAsync: createInvitation } = api.invitation.create.useMutation({
-    onSuccess: async () => {
-      await utils.invitation.getPendingInvitations.invalidate();
-    },
-  });
+  const { mutateAsync: createInvitation, isPending: loading } =
+    api.invitation.create.useMutation({
+      onSuccess: async () => {
+        await utils.invitation.getPendingInvitations.invalidate();
+      },
+    });
 
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -158,7 +159,7 @@ export const CreateParticipantForm = () => {
                             Administrador
                           </SelectItem>
                           <SelectItem value={BandRole.MEMBER}>
-                            Membro
+                            Integrante
                           </SelectItem>
                         </SelectContent>
                       </Select>
@@ -237,7 +238,12 @@ export const CreateParticipantForm = () => {
 
           <Separator className="px-4 sm:px-16" />
 
-          <Button size="lg" type="submit" className="flex w-full">
+          <Button
+            disabled={loading}
+            size="lg"
+            type="submit"
+            className="flex w-full"
+          >
             <UserPlus />
             Convidar
           </Button>

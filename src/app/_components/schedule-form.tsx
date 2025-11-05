@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Users, RefreshCw, AlertCircle, Trash } from "lucide-react";
-import z from "zod";
+import type z from "zod";
 import { Label } from "./ui/label";
 import {
   Select,
@@ -32,162 +32,29 @@ import {
   instrumentsIcons,
   weeksOfMonthOptions,
 } from "@/lib/constants";
-import { useSession } from "next-auth/react";
-import { useFindCurrentBandId } from "@/lib/hooks/band";
-import { api } from "@/trpc/react";
-import { toast } from "sonner";
+import { createScheduleFormSchema } from "../form-schemas/schedule";
 
-const participantRowSchema = z.object({
-  id: z.string().min(1, "Selecione um participante"),
-  instrument: z.string().min(1, "Selecione uma função"),
-});
+type FormData = z.infer<typeof createScheduleFormSchema>;
 
-const formSchema = z
-  .object({
-    scaleName: z.string().min(2, {
-      message: "Dê um nome para a escala",
-    }),
-    recurrenceType: z.enum(["SINGLE", "RECURRING"], {
-      required_error: "Selecione uma opção",
-    }),
-    frequency: z
-      .enum(["DAILY", "WEEKLY", "MONTHLY"], {
-        required_error: "Selecione uma opção",
-      })
-      .optional(),
-    daysOfWeek: z.string().optional(),
-    weekOfMonth: z.string().optional(),
-    date: z.date().optional(),
-    startDate: z.date().optional(),
-    endDate: z.date().optional(),
-    time: z.string().optional(),
-    notes: z.string().optional(),
-    participants: z
-      .array(participantRowSchema)
-      .min(1, "Adicione pelo menos um participante")
-      .refine(
-        (participants) => {
-          // Verifica se não há participantes duplicados
-          const participantIds = participants.map((p) => p.id);
-          const uniqueNames = new Set(participantIds);
-          return participantIds.length === uniqueNames.size;
-        },
-        {
-          message:
-            "Não é permitido adicionar o mesmo participante mais de uma vez",
-        },
-      ),
-  })
-  .superRefine((data, ctx) => {
-    const {
-      recurrenceType,
-      frequency,
-      startDate,
-      weekOfMonth,
-      daysOfWeek,
-      endDate,
-      date,
-      time,
-    } = data;
+type ScheduleFormProps = Readonly<{
+  defaultValues?: Partial<FormData>;
+  onSubmit: (data: FormData) => Promise<void> | void;
+  participants: {
+    id: string;
+    name: string;
+    instruments: string[];
+  }[];
+  submitLabel?: string;
+}>;
 
-    if (recurrenceType === "SINGLE") {
-      if (!date) {
-        ctx.addIssue({
-          code: "custom",
-          message: "Informe uma data",
-          path: ["date"],
-        });
-      }
-      if (!time) {
-        ctx.addIssue({
-          code: "custom",
-          message: "Informe um horário",
-          path: ["time"],
-        });
-      }
-      return;
-    }
-
-    if (recurrenceType === "RECURRING") {
-      if (!frequency) {
-        ctx.addIssue({
-          code: "custom",
-          message: "Selecione a frequência da escala",
-          path: ["frequency"],
-        });
-      }
-      if (!frequency || (frequency === "WEEKLY" && !daysOfWeek)) {
-        ctx.addIssue({
-          code: "custom",
-          message: "Selecione um dia da semana",
-          path: ["daysOfWeek"],
-        });
-      }
-      if (!frequency || frequency === "MONTHLY") {
-        if (!daysOfWeek) {
-          ctx.addIssue({
-            code: "custom",
-            message: "Selecione um dia da semana",
-            path: ["daysOfWeek"],
-          });
-        }
-        if (!weekOfMonth) {
-          ctx.addIssue({
-            code: "custom",
-            message: "Selecione uma semana do mês",
-            path: ["weekOfMonth"],
-          });
-        }
-      }
-
-      if (
-        frequency === "DAILY" ||
-        frequency === "MONTHLY" ||
-        frequency === "WEEKLY"
-      ) {
-        if (!startDate) {
-          ctx.addIssue({
-            code: "custom",
-            message: "Informe uma data inicial",
-            path: ["startDate"],
-          });
-        }
-        if (!endDate) {
-          ctx.addIssue({
-            code: "custom",
-            message: "Informe uma data final",
-            path: ["endDate"],
-          });
-        }
-
-        // Valida intervalo de tempo
-        if (startDate && endDate && endDate <= startDate) {
-          ctx.addIssue({
-            code: "custom",
-            message: "A data final deve ser posterior à data inicial",
-            path: ["endDate"],
-          });
-        }
-      }
-    }
-  });
-
-type FormData = z.infer<typeof formSchema>;
-
-export default function ScheduleForm() {
-  const { data: session } = useSession();
-  const { bandId, participants } = useFindCurrentBandId();
-
-  const { schedule } = api.useUtils();
-
-  const { mutateAsync: createSingleSchedule } =
-    api.schedule.createSingle.useMutation();
-
-  const { mutateAsync: createRecurrenceSchedule } =
-    api.recurrence.create.useMutation();
-
+export default function ScheduleForm({
+  defaultValues,
+  onSubmit,
+  participants,
+  submitLabel,
+}: ScheduleFormProps) {
   const form = useForm({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(createScheduleFormSchema),
     defaultValues: {
       scaleName: "",
       participants: [],
@@ -200,6 +67,7 @@ export default function ScheduleForm() {
       endDate: undefined,
       startDate: undefined,
       frequency: undefined,
+      ...defaultValues,
     },
   });
 
@@ -207,70 +75,6 @@ export default function ScheduleForm() {
     control: form.control,
     name: "participants",
   });
-
-  const onSubmit = async (data: FormData) => {
-    console.log({ data });
-
-    try {
-      if (!session?.user || !bandId) {
-        return;
-      }
-
-      const participantsPayload = data.participants.map((participant) => ({
-        participantId: participant.id,
-        instrument: participant.instrument,
-      }));
-
-      if (data.recurrenceType === "SINGLE") {
-        const result = await createSingleSchedule({
-          bandId: bandId,
-          name: data.scaleName,
-          date: data.date!,
-          time: data.time,
-          participants: participantsPayload,
-          notes: data.notes,
-        });
-
-        if (result.success) {
-          toast.success("Escala criada com sucesso!");
-          form.reset();
-          form.setValue("recurrenceType", "SINGLE");
-          await schedule.list.invalidate();
-        }
-
-        console.log("Schedule created:", result);
-        return;
-      }
-
-      if (data.recurrenceType === "RECURRING") {
-        const result = await createRecurrenceSchedule({
-          bandId: bandId,
-          name: data.scaleName,
-          frequency: data.frequency!,
-          startDate: data.startDate!,
-          endDate: data.endDate!,
-          time: data.time,
-          dayOfWeek: data.daysOfWeek ? Number(data.daysOfWeek) : undefined,
-          weekOfMonth: data.weekOfMonth ? Number(data.weekOfMonth) : undefined,
-          participants: participantsPayload,
-          notes: data.notes,
-        });
-
-        if (result) {
-          toast.success("Escala criada com sucesso!");
-          form.reset();
-          form.setValue("recurrenceType", "SINGLE");
-          await schedule.list.invalidate();
-        }
-
-        console.log("Schedule created:", result);
-        return;
-      }
-    } catch (error) {
-      console.log(error);
-      toast.error("Erro ao criar a escala, tente novamente");
-    }
-  };
 
   const handleRecurringChange = () => {
     form.clearErrors();
@@ -300,10 +104,6 @@ export default function ScheduleForm() {
   const recurrenceType = form.watch("recurrenceType");
   const frequency = form.watch("frequency");
   const participantsSelected = form.watch("participants");
-
-  console.log(fields);
-
-  console.log("participants: ", participants, participantsSelected);
 
   return (
     <Form {...form}>
@@ -786,7 +586,7 @@ export default function ScheduleForm() {
         </div>
         <div className="flex gap-4 pt-4">
           <Button type="submit" size="lg" className="flex-1">
-            Criar Escala
+            {submitLabel}
           </Button>
           <Button
             type="button"
@@ -799,6 +599,5 @@ export default function ScheduleForm() {
         </div>
       </form>
     </Form>
-    // </div>
   );
 }
