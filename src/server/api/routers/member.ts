@@ -82,6 +82,7 @@ export const memberRouter = createTRPCRouter({
               createdById: true,
             },
           },
+          isActive: true,
           user: {
             select: {
               id: true,
@@ -122,33 +123,109 @@ export const memberRouter = createTRPCRouter({
         data: { role: input.role },
       });
     }),
+  updateActiveStats: protectedProcedure
+    .input(
+      z.object({
+        bandId: z.string(),
+        memberId: z.string(),
+        isActive: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { bandId, memberId, isActive } = input;
+      const userId = ctx.session.user.id ?? "";
 
-  //   removeMember: protectedProcedure
-  //     .input(
-  //       z.object({
-  //         slug: z.string(),
-  //         memberId: z.string(),
-  //       }),
-  //     )
-  //     .mutation(async ({ ctx, input }) => {
-  //       const userId = ctx.session.user.id ?? "";
+      const member = await ctx.db.bandMember.findFirst({
+        where: {
+          userId,
+          bandId,
+        },
+      });
 
-  //       const member = await getMembership(input.slug, userId, ctx.db);
+      if (!member) {
+        return null;
+      }
 
-  //       if (!member) {
-  //         return null;
-  //       }
+      if (member.role === "MEMBER") {
+        throw new Error("Not authorized to remove member");
+      }
 
-  //       const { organization, ...membership } = member;
+      return ctx.db.bandMember.update({
+        where: { bandId_userId: { bandId, userId: memberId } },
+        data: { isActive },
+      });
+    }),
+  updateInstruments: protectedProcedure
+    .input(
+      z.object({
+        memberId: z.string(),
+        bandId: z.string(),
+        instruments: z.array(z.string()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { memberId, bandId, instruments } = input;
+      const userId = ctx.session.user.id ?? "";
 
-  //       const { cannot } = getUserPermissions(userId, membership.role);
+      const member = await ctx.db.bandMember.findFirst({
+        where: {
+          userId,
+          bandId,
+        },
+      });
 
-  //       if (cannot("delete", "User")) {
-  //         throw new Error("Not authorized to remove member");
-  //       }
+      if (!member) {
+        return null;
+      }
 
-  //       return ctx.db.member.delete({
-  //         where: { id: input.memberId, organizationId: organization.id },
-  //       });
-  //     }),
+      if (member.role === "MEMBER") {
+        throw new Error("Not authorized to update member");
+      }
+
+      const result = await ctx.db.bandMember.update({
+        where: { bandId_userId: { bandId, userId: memberId } },
+        data: { instruments },
+      });
+
+      return result;
+    }),
+  removeMember: protectedProcedure
+    .input(
+      z.object({
+        bandId: z.string(),
+        memberId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { bandId, memberId } = input;
+      const userId = ctx.session.user.id ?? "";
+
+      const member = await ctx.db.bandMember.findFirst({
+        where: {
+          userId,
+          bandId,
+        },
+      });
+
+      if (!member) {
+        return null;
+      }
+
+      if (member.role === "MEMBER") {
+        throw new Error("Not authorized to remove member");
+      }
+
+      const memberSchedules = await ctx.db.scheduleParticipant.findMany({
+        where: { participantId: memberId },
+      });
+
+      // await ctx.db.$transaction(async (tx) => {
+      //   await tx.scheduleParticipant.deleteMany({
+      //     where: { participantId: memberId },
+      //   });
+      // });
+      // return ctx.db.bandMember.delete({
+      //   where: { bandId_userId: { bandId, userId: memberId } },
+      // });
+    }),
 });

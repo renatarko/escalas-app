@@ -2,6 +2,7 @@
 
 import {
   Calendar,
+  CalendarSync,
   Check,
   EllipsisVertical,
   Pencil,
@@ -25,13 +26,14 @@ import {
 import { toast } from "sonner";
 import { AlertCustom } from "./custom-alert";
 import { useState } from "react";
-import type { ScheduleStatus } from "@prisma/client";
+import type { RecurrenceType, ScheduleStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
 
 type MenuOptionsProps = {
   schedule: {
     id: string;
     status: ScheduleStatus;
+    recurrenceType: RecurrenceType;
   };
 };
 
@@ -76,8 +78,14 @@ const MenuOptions = ({ schedule }: MenuOptionsProps) => {
         <DropdownMenuContent align="start">
           <DropdownMenuItem onClick={handleEdit}>
             <Pencil />
-            Editar
+            Editar Escala
           </DropdownMenuItem>
+          {schedule.recurrenceType === "RECURRING" && (
+            <DropdownMenuItem>
+              <CalendarSync />
+              Editar recorrência
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem disabled>
             <Check />
             Confirmar
@@ -220,65 +228,6 @@ export const ListSchedule = () => {
                   </div>
                 ))}
               </div>
-
-              {/* <Accordion type="single">
-                <AccordionItem value="item-1">
-                  <AccordionTrigger className="">
-                    <div className="flex items-center gap-4">
-                      <Users className="size-4" />
-                      <p>Integrantes</p>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="space-y-4">
-                    {schedule.participants.map((participant) => (
-                      <div
-                        key={participant.id}
-                        className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div className="flex items-center gap-6">
-                          <div className="">
-                            <p>{participant.participant.name}</p>
-                            <p className="text-chart-2 text-xs">
-                              {participant.participant.whatsapp}
-                            </p>
-                          </div>
-
-                          <Tooltip>
-                            <TooltipTrigger className="bg-accent mr-2 inline-flex items-center justify-center rounded-md p-2 shadow-md">
-                              {
-                                SetInstrument(
-                                  participant.instrument as Instrument,
-                                ).icon
-                              }
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {
-                                SetInstrument(
-                                  participant.instrument as Instrument,
-                                ).label
-                              }
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-
-                        <div className="space-x-2">
-                          <Badge
-                            variant="secondary"
-                            className={`${participant.confirmed === false && "bg-destructive/50"} ${participant.confirmed === null && "bg-chart-5/50"} ${participant.confirmed && "bg-green-500/50"}`}
-                          >
-                            {participant.confirmed && "Confirmado"}
-                            {participant.confirmed === false && "Rejeitado"}
-                            {participant.confirmed === null && "Pendente"}
-                          </Badge>
-                          <Button variant="outline" size="sm">
-                            <Send className="size-4 text-green-600" /> Notificar
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion> */}
             </div>
           );
         })}

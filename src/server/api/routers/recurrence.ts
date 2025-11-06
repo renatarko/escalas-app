@@ -165,15 +165,14 @@ export const recurrenceRouter = createTRPCRouter({
 
       // Atualiza a configuração principal
       const updatedRecurrence = await ctx.db.recurrenceConfig.update({
-        where: { id },
+        where: { id, bandId },
         data: {
-          bandId,
           frequency,
           dayOfWeek,
           weekOfMonth,
           startDate,
           endDate,
-          time: timeDate,
+          time: new Date(),
           notes,
           participants: {
             deleteMany: {},
@@ -182,9 +181,6 @@ export const recurrenceRouter = createTRPCRouter({
               instrument: p.instrument,
             })),
           },
-        },
-        include: {
-          participants: true,
         },
       });
 
@@ -213,7 +209,7 @@ export const recurrenceRouter = createTRPCRouter({
               bandId,
               name,
               date,
-              time: timeDate,
+              time: new Date(),
               notes,
               recurrenceType: "RECURRING",
               recurrenceGroupId: id,

@@ -16,7 +16,7 @@ export const CreateSchedule = () => {
 
   const { schedule } = api.useUtils();
 
-  const { mutateAsync: createSingleSchedule } =
+  const { mutateAsync: createSingleSchedule, isPending: singleIsPending } =
     api.schedule.createSingle.useMutation({
       async onSuccess() {
         toast.success("Escala criada com sucesso!");
@@ -24,17 +24,17 @@ export const CreateSchedule = () => {
       },
     });
 
-  const { mutateAsync: createRecurrenceSchedule } =
-    api.recurrence.create.useMutation({
-      async onSuccess() {
-        toast.success("Escala criada com sucesso!");
-        await schedule.list.invalidate();
-      },
-    });
+  const {
+    mutateAsync: createRecurrenceSchedule,
+    isPending: recurrenceIsPending,
+  } = api.recurrence.create.useMutation({
+    async onSuccess() {
+      toast.success("Escala criada com sucesso!");
+      await schedule.list.invalidate();
+    },
+  });
 
   const onSubmit = async (data: FormData) => {
-    console.log({ data });
-
     try {
       if (!session?.user || !bandId) {
         return;
@@ -46,7 +46,7 @@ export const CreateSchedule = () => {
       }));
 
       if (data.recurrenceType === "SINGLE") {
-        const result = await createSingleSchedule({
+        await createSingleSchedule({
           bandId: bandId,
           name: data.scaleName,
           date: data.date!,
@@ -54,10 +54,6 @@ export const CreateSchedule = () => {
           participants: participantsPayload,
           notes: data.notes,
         });
-
-        if (result.success) {
-          console.log("Schedule created:", result);
-        }
 
         return;
       }
@@ -93,6 +89,7 @@ export const CreateSchedule = () => {
       onSubmit={onSubmit}
       participants={participants}
       submitLabel="Criar escala"
+      loading={singleIsPending || recurrenceIsPending}
     />
   );
 };

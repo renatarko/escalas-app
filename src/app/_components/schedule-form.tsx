@@ -45,6 +45,8 @@ type ScheduleFormProps = Readonly<{
     instruments: string[];
   }[];
   submitLabel?: string;
+  loading: boolean;
+  isEdit?: boolean;
 }>;
 
 export default function ScheduleForm({
@@ -52,6 +54,8 @@ export default function ScheduleForm({
   onSubmit,
   participants,
   submitLabel,
+  loading,
+  isEdit = false,
 }: ScheduleFormProps) {
   const form = useForm({
     resolver: zodResolver(createScheduleFormSchema),
@@ -126,58 +130,60 @@ export default function ScheduleForm({
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="recurrenceType"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Tipo de Agendamento</FormLabel>
-                <FormControl>
-                  <RadioGroup
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      handleRecurringChange();
-                    }}
-                    className="grid grid-cols-2 gap-4"
-                  >
-                    <Label
-                      htmlFor="SINGLE"
-                      className={`focus:outline-input focus-within:border-ring focus-within:ring-ring/50 hover:outline-chart-2 flex cursor-pointer items-center gap-2 rounded-lg border p-4 transition duration-150 focus-within:ring-[1px] focus-within:outline-2 hover:outline-2 sm:gap-4 sm:p-6 ${recurrenceType === "SINGLE" && "outline-chart-2 shadow-md outline-1"}`}
+          {!isEdit && (
+            <FormField
+              control={form.control}
+              name="recurrenceType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo de Agendamento</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        handleRecurringChange();
+                      }}
+                      className="grid grid-cols-2 gap-4"
                     >
-                      <RadioGroupItem
-                        checked={recurrenceType === "SINGLE"}
-                        value="SINGLE"
-                        id="SINGLE"
-                      />
-                      <div>
-                        <p>Único</p>
-                        <p className="text-muted-foreground text-xs">
-                          Um evento específico
-                        </p>
-                      </div>
-                    </Label>
-                    <Label
-                      htmlFor="RECURRING"
-                      className={`focus:outline-input focus-within:border-ring focus-within:ring-ring/50 hover:outline-chart-2 flex cursor-pointer items-center gap-2 rounded-lg border p-4 transition focus-within:ring-[1px] focus-within:outline-2 hover:outline-2 sm:gap-4 sm:p-6 ${recurrenceType === "RECURRING" && "outline-chart-2 shadow-md outline-1"}`}
-                    >
-                      <RadioGroupItem
-                        checked={recurrenceType === "RECURRING"}
-                        value="RECURRING"
-                        id="RECURRING"
-                      />
-                      <div>
-                        <p>Recorrente</p>
-                        <p className="text-muted-foreground text-xs">
-                          Repetir automaticamente
-                        </p>
-                      </div>
-                    </Label>
-                  </RadioGroup>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                      <Label
+                        htmlFor="SINGLE"
+                        className={`focus:outline-input focus-within:border-ring focus-within:ring-ring/50 hover:outline-chart-2 flex cursor-pointer items-center gap-2 rounded-lg border p-4 transition duration-150 focus-within:ring-[1px] focus-within:outline-2 hover:outline-2 sm:gap-4 sm:p-6 ${recurrenceType === "SINGLE" && "outline-chart-2 shadow-md outline-1"}`}
+                      >
+                        <RadioGroupItem
+                          checked={recurrenceType === "SINGLE"}
+                          value="SINGLE"
+                          id="SINGLE"
+                        />
+                        <div>
+                          <p>Único</p>
+                          <p className="text-muted-foreground text-xs">
+                            Um evento específico
+                          </p>
+                        </div>
+                      </Label>
+                      <Label
+                        htmlFor="RECURRING"
+                        className={`focus:outline-input focus-within:border-ring focus-within:ring-ring/50 hover:outline-chart-2 flex cursor-pointer items-center gap-2 rounded-lg border p-4 transition focus-within:ring-[1px] focus-within:outline-2 hover:outline-2 sm:gap-4 sm:p-6 ${recurrenceType === "RECURRING" && "outline-chart-2 shadow-md outline-1"}`}
+                      >
+                        <RadioGroupItem
+                          checked={recurrenceType === "RECURRING"}
+                          value="RECURRING"
+                          id="RECURRING"
+                        />
+                        <div>
+                          <p>Recorrente</p>
+                          <p className="text-muted-foreground text-xs">
+                            Repetir automaticamente
+                          </p>
+                        </div>
+                      </Label>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           {/* Campos para evento ÚNICO */}
           {recurrenceType === "SINGLE" && (
@@ -585,12 +591,13 @@ export default function ScheduleForm({
           </div>
         </div>
         <div className="flex gap-4 pt-4">
-          <Button type="submit" size="lg" className="flex-1">
+          <Button disabled={loading} type="submit" size="lg" className="flex-1">
             {submitLabel}
           </Button>
           <Button
             type="button"
             variant="outline"
+            disabled={loading}
             size="lg"
             onClick={handleReset}
           >
