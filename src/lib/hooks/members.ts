@@ -14,6 +14,7 @@ export const useFindManyMembers = () => {
     whatsapp: member.user.whatsapp,
     role: member.role,
     instruments: member.instruments,
+    isActive: member.isActive,
   }));
 
   return { members, isLoading, refetch };

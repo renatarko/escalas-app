@@ -268,12 +268,11 @@ export const scheduleRouter = createTRPCRouter({
 
       try {
         const updated = await ctx.db.schedule.update({
-          where: { id },
+          where: { id, bandId },
           data: {
-            bandId,
             name,
             date,
-            time: timeDate,
+            time: new Date(),
             notes,
             participants: {
               deleteMany: {}, // limpa todos
