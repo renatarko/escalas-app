@@ -11,7 +11,7 @@ export const TabsContentCustom = ({
   value,
 }: TabsContentProps) => {
   return (
-    <TabsContent className="min-h-20 w-full px-4 pb-4" value={value}>
+    <TabsContent className="min-h-20 w-full px-2 pb-4 sm:px-4" value={value}>
       <div className="flex flex-col gap-4">
         <h2 className="text-2xl font-bold">{title}</h2>
         {children}

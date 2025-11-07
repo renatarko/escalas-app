@@ -17,6 +17,7 @@ import {
   getCurrentBandFromCookie,
   setBandInCookie,
 } from "@/lib/utils/getCurrentBandFromCookie";
+import { useTabsStore } from "@/stores/use-tabs-store";
 import { api } from "@/trpc/react";
 import { Music2, Settings } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -27,13 +28,16 @@ export default function DashboardHome() {
   const { data: session } = useSession();
   const { data: bands, isPending } = api.band.getBands.useQuery();
 
+  const currentNickname = getCurrentBandFromCookie();
+  const { setTab } = useTabsStore();
+
   const [redirecting, setRedirecting] = useState(false);
   const [nickname, setNickname] = useState("");
-  const currentNickname = getCurrentBandFromCookie();
 
   const handleBandChange = (nickname: string) => {
     setNickname(nickname);
     setBandInCookie(nickname);
+    setTab("scales");
     setRedirecting(true);
   };
 
@@ -42,30 +46,24 @@ export default function DashboardHome() {
       if (currentNickname === nickname) {
         setTimeout(() => {
           redirect("/admin");
-        }, 1200);
+        }, 1000);
       }
     }
   }, [redirecting, nickname, currentNickname]);
 
   return (
-    <div className="pt-8">
+    <div className="sm:pt-8">
       <section className="mb-12 text-center">
-        <h1 className="mb-3 text-4xl font-bold">
+        <h1 className="mb-3 text-xl font-bold sm:text-4xl">
           Bem-vindo de volta, <span className="text-teal-700">músico!</span>
         </h1>
-        <p className="text-muted-foreground text-lg">
+        <p className="text-muted-foreground text-md sm:text-lg">
           Gerencie suas bandas, integrantes e escalas de forma prática.
         </p>
       </section>
 
       <section className="mb-16 flex justify-center gap-4">
         <CreateBandDialog label="Nova Banda" />
-        {/* <Link href="/schedules/new">
-          <Button variant="outline">
-            <CalendarDays className="mr-2 h-5 w-5" />
-            Criar Escala
-          </Button>
-        </Link> */}
       </section>
 
       {/* Lista de Bandas */}

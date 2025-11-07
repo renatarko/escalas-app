@@ -13,5 +13,11 @@ export const useFindCurrentBandId = () => {
     instruments: member.instruments,
   }));
 
-  return { bandId: data?.id, participants, isLoading, refetch };
+  return {
+    bandId: data?.id,
+    bandName: data?.name,
+    participants,
+    isLoading,
+    refetch,
+  };
 };
