@@ -1,6 +1,5 @@
 import { auth } from "@/server/auth";
 import { Unauthorized } from "@/app/_components/unauthorized";
-import { api } from "@/trpc/server";
 import { cookies } from "next/headers";
 import { TabsContainer } from "@/app/_components/tabs-container";
 
@@ -15,19 +14,6 @@ export default async function Admin() {
   const nickname = await getCurrentBandFromCookieServer();
 
   if (!session || !nickname) {
-    return (
-      <div className="mt-24 flex w-full items-center justify-center">
-        <Unauthorized />
-      </div>
-    );
-  }
-
-  const userIsOwnerOrAdmin = await api.band.getByUserId({
-    userId: session?.user.id,
-    nickname,
-  });
-
-  if (!userIsOwnerOrAdmin) {
     return (
       <div className="mt-24 flex w-full items-center justify-center">
         <Unauthorized />

@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 export type TabsStoreProps =
   | "scales"
+  | "my-scales"
   | "create-scales"
   | "participants"
   | "invitations";

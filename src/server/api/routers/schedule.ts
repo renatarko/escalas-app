@@ -350,6 +350,50 @@ export const scheduleRouter = createTRPCRouter({
       return schedules;
     }),
 
+  listByMemberId: protectedProcedure
+    .input(
+      z.object({
+        memberId: z.string(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const { memberId } = input;
+
+      const schedules = await ctx.db.scheduleParticipant.findMany({
+        where: {
+          participantId: memberId,
+        },
+        select: {
+          id: true,
+          instrument: true,
+          scheduleId: true,
+          confirmed: true,
+          justification: true,
+          schedule: {
+            select: {
+              name: true,
+              id: true,
+              date: true,
+              time: true,
+              recurrenceType: true,
+              createdBy: { select: { name: true } },
+            },
+          },
+          participant: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              whatsapp: true,
+            },
+          },
+        },
+        orderBy: [{ schedule: { date: "asc" } }, { schedule: { time: "asc" } }],
+      });
+
+      return schedules;
+    }),
+
   // Buscar escala por ID
   getById: protectedProcedure
     .input(z.object({ id: z.string() }))

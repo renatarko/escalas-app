@@ -13,6 +13,7 @@ import {
 } from "@/app/_components/ui/dialog";
 import { Spinner } from "@/app/_components/ui/spinner";
 import { memberRoleLabel } from "@/lib/constants";
+import { useCurrentMember } from "@/lib/hooks/members";
 import {
   getCurrentBandFromCookie,
   setBandInCookie,
@@ -26,6 +27,7 @@ import { useEffect, useState } from "react";
 
 export default function DashboardHome() {
   const { data: session } = useSession();
+  const member = useCurrentMember();
   const { data: bands, isPending } = api.band.getBands.useQuery();
 
   const currentNickname = getCurrentBandFromCookie();
@@ -101,7 +103,10 @@ export default function DashboardHome() {
                     size="sm"
                     onClick={() => handleBandChange(band.nickname)}
                   >
-                    <Settings className="mr-2 h-4 w-4" /> Gerenciar
+                    <Settings className="mr-2 h-4 w-4" />
+                    {member && member.role !== "MEMBER"
+                      ? "Gerenciar"
+                      : "Ver detalhes"}
                   </Button>
 
                   {!!session?.user && (
