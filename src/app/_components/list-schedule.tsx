@@ -123,7 +123,7 @@ export const ListSchedule = () => {
   );
 
   return (
-    <div className="mt-4 grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 md:grid-cols-2">
       {(isPending || isLoading) && (
         <div className="bg-muted col-span-full h-20 w-full animate-pulse rounded-lg border p-8"></div>
       )}

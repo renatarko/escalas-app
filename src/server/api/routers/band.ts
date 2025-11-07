@@ -70,6 +70,7 @@ export const bandRouter = createTRPCRouter({
           },
           select: {
             id: true,
+            name: true,
             members: {
               select: {
                 instruments: true,

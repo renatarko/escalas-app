@@ -35,23 +35,15 @@ export const Header = () => {
 
   return (
     <header
-      className={`border-muted bg-muted fixed top-6 right-0 left-0 container mx-auto flex items-center justify-between rounded-lg border-b p-4 shadow-md ${isVisible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"} duration-150`}
+      className={`border-muted bg-muted fixed right-0 left-0 z-50 container mx-auto flex items-center justify-between rounded-lg border-b p-4 shadow-md sm:top-6 ${isVisible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-100 sm:opacity-0"} duration-150`}
     >
       <Link href="/">
         <CalendarCheck className="size-6" />
       </Link>
       <div className="flex items-center gap-4 justify-self-end">
-        {!!user && user.role === "ADMIN" && (
-          <UserLogged />
-          // <Button variant="outline">
-          //   <Link href="/admin">Gerenciar Escalas</Link>
-          // </Button>
-        )}
+        {!!user && user.role === "ADMIN" && <UserLogged />}
 
-        {!!user && user.role === "USER" && (
-          <UserLogged />
-          // <Button variant="outline">Minhas Escalas</Button>
-        )}
+        {!!user && user.role === "USER" && <UserLogged />}
 
         {!user && (
           <Button variant="outline">

@@ -22,13 +22,13 @@ export default async function Home() {
   return (
     <HydrateClient>
       <main className="container mx-auto flex min-h-screen flex-col items-center justify-center space-y-8 pt-28 pb-12">
-        <section className="space-y-8 px-6 pt-16 pb-10 text-center">
+        <section className="space-y-8 px-6 pb-10 text-center sm:pt-16">
           <div className="flex flex-col gap-2">
-            <h1 className="text-5xl font-extrabold">
+            <h1 className="text-xl font-extrabold sm:text-5xl">
               Organize suas <span className="text-teal-700">escalas</span> com
               facilidade
             </h1>
-            <p className="text-muted-foreground text-lg">
+            <p className="text-muted-foreground text-md sm:text-lg">
               Gerencie bandas, integrantes e escalas de forma automática e sem
               complicações.
             </p>
