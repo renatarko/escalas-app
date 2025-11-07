@@ -28,6 +28,7 @@ import { AlertCustom } from "./custom-alert";
 import { useState } from "react";
 import type { RecurrenceType, ScheduleStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
+import { useCurrentMember } from "@/lib/hooks/members";
 
 type MenuOptionsProps = {
   schedule: {
@@ -117,6 +118,8 @@ const MenuOptions = ({ schedule }: MenuOptionsProps) => {
 
 export const ListSchedule = () => {
   const { bandId, isLoading } = useFindCurrentBandId();
+  const member = useCurrentMember();
+
   const { data, isPending } = api.schedule.list.useQuery(
     { bandId: bandId ?? "" },
     { enabled: !!bandId },
@@ -174,7 +177,10 @@ export const ListSchedule = () => {
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <MenuOptions schedule={schedule} />
+
+                  {member && member.role !== "MEMBER" && (
+                    <MenuOptions schedule={schedule} />
+                  )}
                 </div>
               </div>
 
@@ -219,11 +225,13 @@ export const ListSchedule = () => {
                         {participant.confirmed === null && "Pendente"}
                       </Badge>
 
-                      {!participant.confirmed && (
-                        <Button variant="outline" size="icon-sm">
-                          <Send className="size-4 text-green-600" />
-                        </Button>
-                      )}
+                      {member &&
+                        member.role !== "MEMBER" &&
+                        !participant.confirmed && (
+                          <Button variant="outline" size="icon-sm">
+                            <Send className="size-4 text-green-600" />
+                          </Button>
+                        )}
                     </div>
                   </div>
                 ))}

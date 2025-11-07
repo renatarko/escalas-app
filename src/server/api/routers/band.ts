@@ -142,7 +142,7 @@ export const bandRouter = createTRPCRouter({
             {
               members: {
                 some: {
-                  id: ctx.session.user.id,
+                  userId: ctx.session.user.id,
                 },
               },
             },

@@ -26,6 +26,7 @@ import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import { useFindCurrentBandId } from "@/lib/hooks/band";
 import { Switch } from "./ui/switch";
+import { useCurrentMember } from "@/lib/hooks/members";
 
 type ParticipantProps = {
   id: string;
@@ -43,6 +44,7 @@ export const CreatedParticipant = ({
   isActive,
 }: ParticipantProps) => {
   const { bandId } = useFindCurrentBandId();
+  const member = useCurrentMember();
 
   const [open, setOpen] = useState({
     edit: false,
@@ -158,33 +160,36 @@ export const CreatedParticipant = ({
         )}
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="flex flex-col gap-1 text-center">
-          <span className="text-muted-foreground text-xs">
-            {isActive ? "Ativo" : "Ativar"}
-          </span>
-          <Switch
-            id={id}
-            checked={isActive}
-            onCheckedChange={handleActiveChange}
-            disabled={statsIsLoading}
-          />
+      {member?.role !== "MEMBER" && (
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-1 text-center">
+            <span className="text-muted-foreground text-xs">
+              {isActive ? "Ativo" : "Ativar"}
+            </span>
+            <Switch
+              id={id}
+              checked={isActive}
+              onCheckedChange={handleActiveChange}
+              disabled={statsIsLoading}
+            />
+          </div>
+          <Button
+            size="icon-sm"
+            variant="outline"
+            onClick={() => setOpen({ ...open, edit: true })}
+          >
+            <Pencil />
+          </Button>
+
+          <Button
+            size="icon-sm"
+            variant="destructive"
+            onClick={() => setOpen({ ...open, delete: true })}
+          >
+            <Trash />
+          </Button>
         </div>
-        <Button
-          size="icon-sm"
-          variant="outline"
-          onClick={() => setOpen({ ...open, edit: true })}
-        >
-          <Pencil />
-        </Button>
-        <Button
-          size="icon-sm"
-          variant="destructive"
-          onClick={() => setOpen({ ...open, delete: true })}
-        >
-          <Trash />
-        </Button>
-      </div>
+      )}
 
       <AlertDialog open={open.edit}>
         <AlertDialogContent>

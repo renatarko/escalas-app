@@ -110,22 +110,8 @@ export const CreateParticipantForm = () => {
           onSubmit={form.handleSubmit(onSubmit)}
           className="bg-accent space-y-4 rounded-lg p-4"
         >
-          <div className="flex flex-col">
-            {/* <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            /> */}
-
-            <div className="flex items-start gap-4 space-y-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col items-start gap-4 sm:flex-row">
               <FormField
                 control={form.control}
                 name="email"
@@ -144,14 +130,14 @@ export const CreateParticipantForm = () => {
                 control={form.control}
                 name="role"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="w-full sm:w-fit">
                     <FormLabel>Função</FormLabel>
                     <FormControl>
                       <Select
                         value={field.value}
                         onValueChange={field.onChange}
                       >
-                        <SelectTrigger className="w-48">
+                        <SelectTrigger className="w-full sm:w-48">
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
@@ -170,23 +156,6 @@ export const CreateParticipantForm = () => {
               />
             </div>
 
-            {/* <FormField
-              control={form.control}
-              name="whatsapp"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Número WhatsApp</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    O participante receberá notificações via WhatsApp
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            /> */}
-
             <FormField
               control={form.control}
               name="instruments"
@@ -194,7 +163,7 @@ export const CreateParticipantForm = () => {
                 <FormItem>
                   <FormLabel>Instrumento/Função</FormLabel>
                   <FormControl>
-                    <div className="grid grid-cols-2 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
                       {instrumentOptions.map((option) => {
                         const isChecked = field.value?.includes(option.value);
 
