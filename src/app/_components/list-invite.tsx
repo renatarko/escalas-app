@@ -3,29 +3,18 @@
 import { useFindCurrentBandId } from "@/lib/hooks/band";
 import { api } from "@/trpc/react";
 import { Spinner } from "./ui/spinner";
-import {
-  instrumentOptions,
-  instrumentsIcons,
-  invitationStatusLabel,
-  memberRoleLabel,
-} from "@/lib/constants";
-import type { InvitationStatus } from "@prisma/client";
-import { Badge } from "./ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-import type { Instrument } from "@/lib/types";
-import { Button } from "./ui/button";
-import { EllipsisVertical } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { InviteCard } from "./invite-card";
+import { Separator } from "./ui/separator";
 
 export const ListInvite = () => {
   const { bandId, isLoading } = useFindCurrentBandId();
-  const { data: invitations } = api.invitation.getPendingInvitations.useQuery(
+  const { data: allInvitations } = api.invitation.getInvitations.useQuery(
     {
       bandId: bandId ?? "",
     },
     { enabled: !!bandId },
   );
-
-  console.log(invitations);
 
   if (isLoading) {
     return (
@@ -35,73 +24,75 @@ export const ListInvite = () => {
     );
   }
 
-  const setBackgroundColorByStatus = (status: InvitationStatus) => {
-    if (status === "CANCELLED") return "bg-destructive";
-    if (status === "EXPIRED") return "bg-orange-600";
-    if (status === "PENDING") return "bg-yellow-600";
-  };
-
   return (
     <div className="w-full space-y-4 py-8">
-      <h4 className="text-lg font-semibold">Convites Pendentes</h4>
+      <h4 className="text-lg font-semibold">Todos Convites</h4>
 
-      {invitations?.length === 0 && (
-        <p className="text-muted-foreground text-center">
-          Não há convites pendentes
-        </p>
-      )}
-
-      {invitations &&
-        invitations?.length > 0 &&
-        invitations.map((invitation) => (
-          <div
-            key={invitation.email}
-            className="bg-muted/50 flex items-center justify-between p-4"
+      <Tabs defaultValue="pending">
+        <TabsList>
+          <TabsTrigger
+            className="data-[state=active]:rounded-md"
+            value="pending"
           >
-            <div className="space-y-1">
-              <p className="text-sm">{invitation.email}</p>
-              <p className="text-muted-foreground text-xs">
-                {memberRoleLabel[invitation.role!]}
-              </p>
-            </div>
+            Pendentes
+          </TabsTrigger>
+          <TabsTrigger
+            className="data-[state=active]:rounded-md"
+            value="declined"
+          >
+            Negados
+          </TabsTrigger>
+          <TabsTrigger
+            className="data-[state=active]:rounded-md"
+            value="accepted"
+          >
+            Aceitos
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="pending">
+          {allInvitations?.pending.length === 0 && (
+            <p className="text-muted-foreground text-center text-sm">
+              Não há convites pendentes, expirados ou excluídos
+            </p>
+          )}
+          {allInvitations?.pending.map((invitation, i) => (
+            <>
+              <InviteCard key={invitation.id} invitation={invitation} />
+              {i < allInvitations.pending.length - 1 && <Separator />}
+            </>
+          ))}
+        </TabsContent>
 
-            {invitation.instruments.length > 0 && (
-              <div className="text-center">
-                <p className="text-muted-foreground text-xs font-medium">
-                  Funções
-                </p>
-                <ul className="flex list-none items-center gap-2">
-                  {invitation.instruments.map((func) => (
-                    <li key={func}>
-                      <Tooltip>
-                        <TooltipTrigger className="bg-accent mr-2 inline-flex items-center justify-center rounded-md p-2 shadow-md">
-                          {instrumentsIcons[func as Instrument]}
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {
-                            instrumentOptions.find(
-                              (instrument) => instrument.value === func,
-                            )?.label
-                          }
-                        </TooltipContent>
-                      </Tooltip>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+        <TabsContent value="declined">
+          {allInvitations?.declined.length === 0 && (
+            <p className="text-muted-foreground py-6 text-center text-sm">
+              Não há convites negados
+            </p>
+          )}
 
-            <div className="space-x-1 text-center">
-              <Badge className={setBackgroundColorByStatus(invitation.status)}>
-                {invitationStatusLabel[invitation.status]}
-              </Badge>
+          {allInvitations?.declined.map((invitation, i) => (
+            <>
+              <InviteCard key={invitation.id} invitation={invitation} />
+              {i < allInvitations.declined.length - 1 && <Separator />}
+            </>
+          ))}
+        </TabsContent>
 
-              <Button variant="ghost" size="icon-sm">
-                <EllipsisVertical className="size-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
+        <TabsContent value="accepted">
+          {allInvitations?.accepted.length === 0 && (
+            <p className="text-muted-foreground py-6 text-center text-sm">
+              Não há convites aceitos
+            </p>
+          )}
+
+          {allInvitations?.accepted.map((invitation, i) => (
+            <>
+              <InviteCard key={invitation.id} invitation={invitation} />
+              {i < allInvitations.accepted.length - 1 && <Separator />}
+            </>
+          ))}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

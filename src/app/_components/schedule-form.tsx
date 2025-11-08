@@ -111,7 +111,7 @@ export default function ScheduleForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="bg-card">
+      <form onSubmit={form.handleSubmit(onSubmit)}>
         <div className="space-y-6">
           <FormField
             control={form.control}

@@ -22,7 +22,7 @@ export default async function Admin() {
   }
 
   return (
-    <div className="flex w-full flex-col gap-6 rounded-lg shadow-lg">
+    <div className="bg-muted/70">
       <TabsContainer />
     </div>
   );

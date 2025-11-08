@@ -8,8 +8,13 @@ export const ListParticipants = () => {
 
   if (isLoading) {
     return (
-      <div className="flex w-full items-center justify-center">
-        <div className="bg-muted h-20 w-full animate-pulse rounded-lg border p-8"></div>
+      <div className="grid grid-cols-1 gap-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div
+            key={i + 1}
+            className="bg-muted h-20 w-full animate-pulse rounded-lg border p-8"
+          ></div>
+        ))}
       </div>
     );
   }
