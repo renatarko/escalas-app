@@ -25,13 +25,13 @@ export function TabsContainer() {
     switch (tab) {
       case "my-scales":
         return (
-          <TabsContentCustom title="Minhas Escalas" value="my-scales">
+          <TabsContentCustom title="Minhas Escalas">
             <ListScheduleParticipant />
           </TabsContentCustom>
         );
       case "scales":
         return (
-          <TabsContentCustom title="Gerenciar Escalas" value="scales">
+          <TabsContentCustom title="Gerenciar Escalas">
             <ListSchedule />
           </TabsContentCustom>
         );
@@ -39,7 +39,7 @@ export function TabsContainer() {
         return (
           member &&
           member.role !== "MEMBER" && (
-            <TabsContentCustom title="Criar Escala" value="create-scales">
+            <TabsContentCustom title="Criar Escala">
               <CreateSchedule />
             </TabsContentCustom>
           )
@@ -48,10 +48,7 @@ export function TabsContainer() {
         return (
           member &&
           member.role !== "MEMBER" && (
-            <TabsContentCustom
-              title="Gerenciar Integrantes"
-              value="participants"
-            >
+            <TabsContentCustom title="Gerenciar Integrantes">
               <ListParticipants />
             </TabsContentCustom>
           )
@@ -60,7 +57,7 @@ export function TabsContainer() {
         return (
           member &&
           member.role !== "MEMBER" && (
-            <TabsContentCustom title="Convidar Integrantes" value="invitations">
+            <TabsContentCustom title="Convidar Integrantes">
               <CreateParticipantForm />
               <ListInvite />
             </TabsContentCustom>
@@ -72,55 +69,56 @@ export function TabsContainer() {
   }, [tab, member]);
 
   return (
-    <div className="flex w-full flex-col gap-6 rounded-lg shadow-lg">
-      <Tabs
+    <Tabs
+      value={tab}
+      onValueChange={handleTabChange}
+      className="space-y-4 sm:mt-0"
+    >
+      <TabsList className="bg-muted/60 border-border hidden h-20 w-full rounded-none border p-0 sm:flex">
+        <TabsTrigger className="h-full w-full rounded-none" value="scales">
+          <CalendarDays /> Escalas
+        </TabsTrigger>
+
+        <TabsTrigger className="h-full w-full rounded-none" value="my-scales">
+          <Calendar /> Minhas Escalas
+        </TabsTrigger>
+
+        {member && member.role !== "MEMBER" && (
+          <TabsTrigger
+            className="h-full w-full rounded-none"
+            value="create-scales"
+          >
+            <CirclePlus /> Criar Escala
+          </TabsTrigger>
+        )}
+
+        {member && member.role !== "MEMBER" && (
+          <TabsTrigger
+            className="h-full w-full rounded-none"
+            value="participants"
+          >
+            <Users2 />
+            Integrantes
+          </TabsTrigger>
+        )}
+
+        {member && member.role !== "MEMBER" && (
+          <TabsTrigger
+            className="h-full w-full rounded-none"
+            value="invitations"
+          >
+            <Users2 />
+            Convites
+          </TabsTrigger>
+        )}
+      </TabsList>
+
+      <TabsContent
         value={tab}
-        onValueChange={handleTabChange}
-        className="space-y-4 sm:mt-0"
+        className="min-h-20 w-full px-2 pt-0 pb-4 sm:px-4"
       >
-        <TabsList className="bg-muted/60 border-border hidden h-20 w-full rounded-none border p-0 sm:flex">
-          <TabsTrigger className="h-full w-full rounded-none" value="scales">
-            <CalendarDays /> Escalas
-          </TabsTrigger>
-
-          <TabsTrigger className="h-full w-full rounded-none" value="my-scales">
-            <Calendar /> Minhas Escalas
-          </TabsTrigger>
-
-          {member && member.role !== "MEMBER" && (
-            <TabsTrigger
-              className="h-full w-full rounded-none"
-              value="create-scales"
-            >
-              <CirclePlus /> Criar Escala
-            </TabsTrigger>
-          )}
-
-          {member && member.role !== "MEMBER" && (
-            <TabsTrigger
-              className="h-full w-full rounded-none"
-              value="participants"
-            >
-              <Users2 />
-              Integrantes
-            </TabsTrigger>
-          )}
-
-          {member && member.role !== "MEMBER" && (
-            <TabsTrigger
-              className="h-full w-full rounded-none"
-              value="invitations"
-            >
-              <Users2 />
-              Convites
-            </TabsTrigger>
-          )}
-        </TabsList>
-
-        <TabsContent value={tab} className="pb-6">
-          {renderTabsContent}
-        </TabsContent>
-      </Tabs>
-    </div>
+        {renderTabsContent}
+      </TabsContent>
+    </Tabs>
   );
 }
