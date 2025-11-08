@@ -207,6 +207,27 @@ export const invitationRouter = createTRPCRouter({
     }),
 
   // Reject an invitation
+  delete: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const { id } = input;
+
+      const invitation = await ctx.db.bandInvitation.findUnique({
+        where: { id },
+      });
+
+      if (!invitation) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Invitation not found",
+        });
+      }
+
+      await ctx.db.bandInvitation.delete({
+        where: { id: invitation.id },
+      });
+    }),
+
   reject: protectedProcedure
     .input(rejectInvitationSchema)
     .mutation(async ({ ctx, input }) => {
@@ -263,45 +284,31 @@ export const invitationRouter = createTRPCRouter({
   getInvitations: protectedProcedure
     .input(getInvitationsSchema)
     .query(async ({ ctx, input }) => {
-      const {
-        session: {
-          user: { id: userId },
+      const { bandId } = input;
+
+      const invitations = await ctx.db.bandInvitation.findMany({
+        where: {
+          bandId,
         },
-      } = ctx; // Authenticated user's ID
-      const { type, bandId } = input;
-
-      const where: any = {};
-
-      if (type === "sent") {
-        where.invitedById = userId;
-      } else if (type === "received") {
-        where.email = (
-          await ctx.db.user.findUnique({ where: { id: userId } })
-        )?.email;
-      } else {
-        // Include both sent and received invitations
-        where.OR = [
-          { invitedById: userId },
-          {
-            email: (await ctx.db.user.findUnique({ where: { id: userId } }))
-              ?.email,
-          },
-        ];
-      }
-
-      if (bandId) {
-        where.bandId = bandId;
-      }
-
-      return ctx.db.bandInvitation.findMany({
-        where,
-        include: {
-          band: true,
-          invitedBy: true,
-          user: true,
+        select: {
+          id: true,
+          name: true,
+          instruments: true,
+          email: true,
+          status: true,
+          role: true,
+          invitedBy: { select: { name: true } },
         },
         orderBy: { createdAt: "desc" },
       });
+
+      return {
+        accepted: invitations.filter((inv) => inv.status === "ACCEPTED"),
+        pending: invitations.filter((inv) =>
+          ["EXPIRED", "CANCELLED", "PENDING"].includes(inv.status),
+        ),
+        declined: invitations.filter((inv) => inv.status === "DECLINED"),
+      };
     }),
 
   getPendingInvitations: protectedProcedure
