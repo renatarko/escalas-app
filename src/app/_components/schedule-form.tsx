@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { Users, RefreshCw, AlertCircle, Trash } from "lucide-react";
 import type z from "zod";
 import { Label } from "./ui/label";
@@ -47,6 +47,7 @@ type ScheduleFormProps = Readonly<{
   submitLabel?: string;
   loading: boolean;
   isEdit?: boolean;
+  shouldResetForm?: boolean;
 }>;
 
 export default function ScheduleForm({
@@ -56,6 +57,7 @@ export default function ScheduleForm({
   submitLabel,
   loading,
   isEdit = false,
+  shouldResetForm = false,
 }: ScheduleFormProps) {
   const form = useForm({
     resolver: zodResolver(createScheduleFormSchema),
@@ -104,6 +106,12 @@ export default function ScheduleForm({
     form.resetField("time");
     form.reset();
   };
+
+  useEffect(() => {
+    if (shouldResetForm) {
+      form.reset();
+    }
+  }, [shouldResetForm, form]);
 
   const recurrenceType = form.watch("recurrenceType");
   const frequency = form.watch("frequency");

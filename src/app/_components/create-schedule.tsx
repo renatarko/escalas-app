@@ -7,20 +7,23 @@ import type z from "zod";
 import type { createScheduleFormSchema } from "../form-schemas/schedule";
 import ScheduleForm from "./schedule-form";
 import { toast } from "sonner";
+import { useState } from "react";
 
 type FormData = z.infer<typeof createScheduleFormSchema>;
 
 export const CreateSchedule = () => {
   const { data: session } = useSession();
   const { bandId, participants } = useFindCurrentBandId();
-
   const { schedule } = api.useUtils();
+
+  const [shouldResetForm, setShouldResetForm] = useState(false);
 
   const { mutateAsync: createSingleSchedule, isPending: singleIsPending } =
     api.schedule.createSingle.useMutation({
       async onSuccess() {
         toast.success("Escala criada com sucesso!");
         await schedule.list.invalidate();
+        setShouldResetForm(true);
       },
     });
 
@@ -31,15 +34,16 @@ export const CreateSchedule = () => {
     async onSuccess() {
       toast.success("Escala criada com sucesso!");
       await schedule.list.invalidate();
+      setShouldResetForm(true);
     },
   });
 
   const onSubmit = async (data: FormData) => {
+    if (!session?.user || !bandId) {
+      return;
+    }
+    const toastId = toast.loading("Criando esacala...");
     try {
-      if (!session?.user || !bandId) {
-        return;
-      }
-
       const participantsPayload = data.participants.map((participant) => ({
         participantId: participant.id,
         instrument: participant.instrument,
@@ -59,7 +63,7 @@ export const CreateSchedule = () => {
       }
 
       if (data.recurrenceType === "RECURRING") {
-        const result = await createRecurrenceSchedule({
+        await createRecurrenceSchedule({
           bandId: bandId,
           name: data.scaleName,
           frequency: data.frequency!,
@@ -71,16 +75,12 @@ export const CreateSchedule = () => {
           participants: participantsPayload,
           notes: data.notes,
         });
-
-        if (result) {
-          console.log("Schedule created:", result);
-        }
-
-        return;
       }
     } catch (error) {
       console.log(error);
       toast.error("Erro ao criar a escala, tente novamente");
+    } finally {
+      toast.dismiss(toastId);
     }
   };
 
@@ -90,6 +90,7 @@ export const CreateSchedule = () => {
       participants={participants}
       submitLabel="Criar escala"
       loading={singleIsPending || recurrenceIsPending}
+      shouldResetForm={shouldResetForm}
     />
   );
 };
