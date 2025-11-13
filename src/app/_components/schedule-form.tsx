@@ -1,7 +1,14 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { Users, RefreshCw, AlertCircle, Trash } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import {
+  Users,
+  RefreshCw,
+  AlertCircle,
+  Trash,
+  Sparkles,
+  Plus,
+} from "lucide-react";
 import type z from "zod";
 import { Label } from "./ui/label";
 import {
@@ -33,6 +40,9 @@ import {
   weeksOfMonthOptions,
 } from "@/lib/constants";
 import { createScheduleFormSchema } from "../form-schemas/schedule";
+import { api } from "@/trpc/react";
+import { Checkbox } from "./ui/checkbox";
+import { DialogScheduleForm } from "./dialogs/dialog-schedule-form";
 
 type FormData = z.infer<typeof createScheduleFormSchema>;
 
@@ -48,6 +58,7 @@ type ScheduleFormProps = Readonly<{
   loading: boolean;
   isEdit?: boolean;
   shouldResetForm?: boolean;
+  bandId: string;
 }>;
 
 export default function ScheduleForm({
@@ -58,8 +69,29 @@ export default function ScheduleForm({
   loading,
   isEdit = false,
   shouldResetForm = false,
+  bandId,
 }: ScheduleFormProps) {
-  const form = useForm({
+  const [previewStats, setPreviewStats] = useState({
+    defined: 0,
+    pending: 0,
+    total: 0,
+  });
+
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [showInstrumentDialog, setShowInstrumentDialog] = useState(false);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [selectedInstrumentsToAdd, setSelectedInstrumentsToAdd] = useState<
+    string[]
+  >([]);
+  const [selectedInstrumentsToPreview, setSelectedInstrumentsToPreview] =
+    useState<{ instrument: string; quantity: string }[]>([]);
+
+  const { mutateAsync: generatePreview, isPending: isGeneratingPreview } =
+    api.schedule.generateMembersPreview.useMutation({
+      onSuccess: () => setShowPreviewDialog(false),
+    });
+
+  const form = useForm<FormData>({
     resolver: zodResolver(createScheduleFormSchema),
     defaultValues: {
       scaleName: "",
@@ -91,31 +123,187 @@ export default function ScheduleForm({
     form.resetField("frequency");
   };
 
-  const handleAddParticipant = () => {
-    append({ id: "", instrument: "" });
+  const handleGeneratePreview = async () => {
+    try {
+      const formation = selectedInstrumentsToPreview.reduce(
+        (acc, item) => {
+          acc[item.instrument] = Number(item.quantity);
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+
+      const result = await generatePreview({ bandId, formation });
+
+      if (result && result.length > 0) {
+        // Mapeia para o formato esperado pelo formulário
+        const mappedParticipants = result.map((member) => ({
+          id: member.userId,
+          name: member.name,
+          instrument: member.instrument,
+        }));
+
+        form.setValue("participants", mappedParticipants);
+        const defined = result.filter((m) => !m.placeholder).length;
+        const pending = result.filter((m) => m.placeholder).length;
+
+        setPreviewStats({
+          defined,
+          pending,
+          total: result.length,
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao gerar preview:", error);
+    }
+  };
+
+  const handleAddParticipant = (instrument: Instrument, i: number) => {
+    append({ id: `id-${i}`, instrument });
+    updateStats();
   };
 
   const handleRemoveParticipant = (index: number) => {
     if (fields.length > 0) {
       remove(index);
+      updateStats();
     }
+  };
+
+  const updateStats = () => {
+    const currentParticipants = form.getValues("participants");
+    console.log({ currentParticipants });
+    setPreviewStats({
+      defined: currentParticipants.filter((p) => p.id).length,
+      pending: currentParticipants.filter((p) => !p.id).length,
+      total: currentParticipants.length,
+    });
   };
 
   const handleReset = () => {
     form.clearErrors();
     form.resetField("time");
     form.reset();
+    setPreviewStats({ defined: 0, pending: 0, total: 0 });
   };
 
-  useEffect(() => {
-    if (shouldResetForm) {
-      form.reset();
+  const handleAddInstruments = () => {
+    if (selectedInstrumentsToAdd.length > 0) {
+      selectedInstrumentsToAdd.forEach((instrument) => {
+        append({ id: "", instrument });
+      });
+      setSelectedInstrumentsToAdd([]);
+      setShowInstrumentDialog(false);
     }
-  }, [shouldResetForm, form]);
+  };
+
+  const toggleInstrumentSelection = (instrumentValue: string) => {
+    setSelectedInstrumentsToAdd((prev) =>
+      prev.includes(instrumentValue)
+        ? prev.filter((i) => i !== instrumentValue)
+        : [...prev, instrumentValue],
+    );
+  };
+
+  const handleInstrumentChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    instrumentValue: string,
+  ) => {
+    let quantity = e.target.value;
+    const numericValue = parseInt(quantity, 10);
+    if (numericValue > 10) {
+      quantity = "10";
+      e.target.value = "10"; // Atualiza o input visualmente
+    }
+    setSelectedInstrumentsToPreview((prev) => {
+      if (!quantity || quantity === "0") {
+        return prev.filter((item) => item.instrument !== instrumentValue);
+      }
+
+      const existingIndex = prev.findIndex(
+        (item) => item.instrument === instrumentValue,
+      );
+
+      if (existingIndex !== -1) {
+        const updated = [...prev];
+        updated[existingIndex] = { instrument: instrumentValue, quantity };
+        return updated;
+      }
+
+      return [...prev, { instrument: instrumentValue, quantity }];
+    });
+  };
+
+  const handleClearInputs = () => {
+    setSelectedInstrumentsToPreview([]);
+    // Reseta todos os inputs do tipo number
+    instrumentOptions.forEach((instrument) => {
+      const input = document.getElementById(
+        instrument.value,
+      ) as HTMLInputElement;
+      if (input) {
+        input.value = "";
+      }
+    });
+  };
 
   const recurrenceType = form.watch("recurrenceType");
   const frequency = form.watch("frequency");
   const participantsSelected = form.watch("participants");
+
+  const addedInstruments = new Set(
+    (participantsSelected || []).map((p) => p.instrument).filter(Boolean),
+  );
+
+  const availableInstrumentsToAdd = instrumentOptions.filter(
+    (inst) => !addedInstruments.has(inst.value),
+  );
+
+  const groupedParticipants = (participantsSelected || []).reduce(
+    (acc, participant) => {
+      const instrument = participant.instrument;
+      if (instrument) {
+        acc[instrument] ??= [];
+        acc[instrument].push(participant);
+      }
+      return acc;
+    },
+    {} as Record<string, typeof participantsSelected>,
+  );
+
+  useEffect(() => {
+    if (shouldResetForm) {
+      form.reset();
+      setPreviewStats({ defined: 0, pending: 0, total: 0 });
+    }
+  }, [shouldResetForm, form]);
+
+  useEffect(() => {
+    if (!isInitialized && !isEdit && fields.length === 0) {
+      const defaultInstruments = [
+        "guitar",
+        "keyboard",
+        "vocal",
+        "drum",
+        "bass",
+      ];
+      const defaultParticipants = defaultInstruments.map((instrument) => ({
+        id: "",
+        instrument,
+      }));
+      form.setValue("participants", defaultParticipants);
+      setIsInitialized(true);
+      updateStats();
+    }
+  }, [isInitialized, isEdit, append, selectedInstrumentsToAdd, fields, form]);
+
+  useEffect(() => {
+    if (isEdit) {
+      for (const key in defaultValues) {
+        form.setValue(key as keyof FormData, defaultValues[key]);
+      }
+    }
+  }, [defaultValues, isEdit, form]);
 
   return (
     <Form {...form}>
@@ -436,144 +624,187 @@ export default function ScheduleForm({
           )}
 
           {/* Participantes */}
-          <div>
-            <div className="mb-3 flex items-center justify-between">
+          <div className="py-6">
+            <div className="mb-3 flex flex-col items-center justify-between gap-4 sm:flex-row">
               <Label className="block text-lg font-semibold">
                 <Users className="mr-1 inline size-5" />
                 Participantes
               </Label>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleAddParticipant}
-              >
-                + Adicionar
-              </Button>
-            </div>
 
-            <div className="space-y-4">
-              {fields.map((field, index) => (
-                <div
-                  key={index + 1}
-                  className="flex flex-col items-center justify-between gap-4 sm:flex-row"
+              <div className="flex items-center gap-4">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setShowInstrumentDialog(true)}
                 >
-                  <FormField
-                    control={form.control}
-                    name={`participants.${index}.id`}
-                    render={({ field }) => {
-                      return (
-                        <FormItem className="w-full">
-                          <FormLabel>Nome</FormLabel>
-                          <FormControl>
-                            <Select
-                              value={field.value}
-                              onValueChange={(selectedId) => {
-                                field.onChange(selectedId);
-                              }}
-                            >
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Selecione">
-                                  {field.value
-                                    ? participants?.find(
-                                        (p) => p.id === field.value,
-                                      )?.name
-                                    : "Selecione"}
-                                </SelectValue>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {participants?.map((participant) => (
-                                  <SelectItem
-                                    key={participant.id}
-                                    value={participant.id}
-                                  >
-                                    {participant.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      );
-                    }}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`participants.${index}.instrument`}
-                    render={({ field }) => {
-                      const selectedParticipantId =
-                        participantsSelected?.[index]?.id;
-
-                      const selectedParticipant = participants?.find(
-                        (p) => p.id === selectedParticipantId,
-                      );
-
-                      const instruments =
-                        selectedParticipant?.instruments ?? [];
-
-                      const availableInstruments = instrumentOptions.filter(
-                        (instrument) => instruments.includes(instrument.value),
-                      );
-
-                      return (
-                        <FormItem className="w-full">
-                          <FormLabel>Função</FormLabel>
-                          <FormControl>
-                            <div className="flex items-center gap-4">
-                              <Select
-                                value={field.value}
-                                onValueChange={field.onChange}
-                              >
-                                <SelectTrigger className="w-full">
-                                  <SelectValue placeholder="Selecione" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {availableInstruments?.map((instrument) => (
-                                    <SelectItem
-                                      key={instrument.value}
-                                      value={instrument.value}
-                                    >
-                                      <span className="mr-1">
-                                        {
-                                          instrumentsIcons[
-                                            instrument.value as Instrument
-                                          ]
-                                        }
-                                      </span>{" "}
-                                      {instrument.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="icon-sm"
-                                onClick={() => handleRemoveParticipant(index)}
-                              >
-                                <Trash className="size-4" />
-                              </Button>
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      );
-                    }}
-                  />
-                </div>
-              ))}
+                  + Instrumento
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setShowPreviewDialog(true)}
+                  disabled={isGeneratingPreview}
+                >
+                  {isGeneratingPreview ? "Gerando..." : "Gerar Automático"}
+                </Button>
+              </div>
             </div>
 
-            <div className="space-y-3">
+            {previewStats.total > 0 && (
+              <div className="border-muted bg-primary/10 my-4 flex items-center gap-2 rounded-md p-2">
+                <Sparkles className="text-primary h-4 w-4" />
+                <p className="text-sm">
+                  <strong>Preview gerado:</strong> {previewStats.defined}{" "}
+                  integrantes definidos{" "}
+                  {previewStats.pending > 0 && (
+                    <span className="text-orange-600">
+                      ({previewStats.pending} posições pendentes)
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
+
+            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {Object.entries(groupedParticipants).map(
+                ([instrument, members], i) => {
+                  const availableForInstrument = participants.filter((p) =>
+                    p.instruments.includes(instrument),
+                  );
+
+                  return (
+                    <div
+                      key={instrument}
+                      className="rounded-lg border bg-linear-to-br from-gray-50 to-gray-100 p-3"
+                    >
+                      <div className="mb-3 flex flex-col space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">
+                            {instrumentsIcons[instrument as Instrument]}
+                          </span>
+                          <span className="text-sm font-semibold">
+                            {instrumentOptions.find(
+                              (inst) => inst.value === instrument,
+                            )?.label ?? instrument}
+                          </span>
+                          <span className="bg-primary ml-auto rounded-full px-2 py-0.5 text-xs text-white">
+                            {members.length}
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={() =>
+                            handleAddParticipant(instrument as Instrument, i)
+                          }
+                          variant="link"
+                          size="sm"
+                          className="self-end"
+                        >
+                          <Plus /> Adicionar
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        {members.map((member, memberIndex) => {
+                          const fieldIndex = fields.findIndex((f, idx) => {
+                            const currentParticipant =
+                              participantsSelected[idx];
+                            return (
+                              currentParticipant?.id === member.id &&
+                              currentParticipant?.instrument === instrument
+                            );
+                          });
+
+                          // Se não encontrou o índice, não renderiza
+                          if (fieldIndex === -1) return null;
+
+                          const currentValue =
+                            participantsSelected[fieldIndex]?.id;
+                          const selectedParticipant = participants.find(
+                            (p) => p.id === currentValue,
+                          );
+
+                          return (
+                            <div
+                              key={`${member.id}-${instrument}-${memberIndex}`}
+                              className="space-y-1"
+                            >
+                              <FormField
+                                control={form.control}
+                                name={`participants.${fieldIndex}.id`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormControl>
+                                      <div className="flex items-center gap-2">
+                                        <Select
+                                          value={field.value}
+                                          onValueChange={(e) => {
+                                            field.onChange(e);
+                                            updateStats();
+                                          }}
+                                        >
+                                          <SelectTrigger className="h-9 w-full text-xs">
+                                            <SelectValue placeholder="Selecione">
+                                              {selectedParticipant?.name ??
+                                                "Selecione"}
+                                            </SelectValue>
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {availableForInstrument.length <
+                                            1 ? (
+                                              <p className="w-fit p-2 text-sm">
+                                                Não há integrantes para este
+                                                Instrumento/Função
+                                              </p>
+                                            ) : (
+                                              availableForInstrument.map(
+                                                (participant) => (
+                                                  <SelectItem
+                                                    key={participant.id}
+                                                    value={participant.id}
+                                                  >
+                                                    {participant.name}
+                                                  </SelectItem>
+                                                ),
+                                              )
+                                            )}
+                                          </SelectContent>
+                                        </Select>
+                                        <Button
+                                          type="button"
+                                          variant="destructive"
+                                          size="icon"
+                                          className="h-9 w-9 shrink-0"
+                                          onClick={() =>
+                                            handleRemoveParticipant(fieldIndex)
+                                          }
+                                        >
+                                          <Trash className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </div>
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                },
+              )}
+            </div>
+
+            <div className="">
               {fields.length === 0 && (
-                <p className="text-sm italic">
-                  Nenhum participante adicionado ainda
+                <p className="text-muted-foreground text-sm italic">
+                  Nenhum participante adicionado ainda. Use o botão{" "}
+                  <b>Gerar Preview</b> para sugestões automáticas!
                 </p>
               )}
 
               {form.formState.errors.participants && (
                 <p className="text-destructive text-xs">
-                  {form.formState.errors.participants.message}
+                  {form.formState.errors.participants.root?.message}
                 </p>
               )}
             </div>
@@ -613,6 +844,107 @@ export default function ScheduleForm({
           </Button>
         </div>
       </form>
+
+      <DialogScheduleForm
+        open={showInstrumentDialog}
+        setOpen={setShowInstrumentDialog}
+        title="Adicionar Instrumento"
+        description="
+         Selecione os instrumentos que deseja adicionar à escala:"
+        handleCleanClick={() => {
+          setSelectedInstrumentsToAdd([]);
+          setShowInstrumentDialog(false);
+        }}
+        handleConfirmClick={handleAddInstruments}
+        disabled={selectedInstrumentsToAdd.length === 0}
+        labelBtnConfirm={
+          selectedInstrumentsToAdd.length > 0
+            ? `Adicionar (${selectedInstrumentsToAdd.length})`
+            : "Adicionar"
+        }
+      >
+        <div className="grid grid-cols-2 gap-4">
+          {availableInstrumentsToAdd.length > 0 ? (
+            availableInstrumentsToAdd.map((instrument) => (
+              <Label
+                key={instrument.value}
+                htmlFor={instrument.value}
+                className={`hover:bg-muted/50 border-muted flex cursor-pointer items-center gap-3 rounded-lg border p-2 transition-all ${
+                  selectedInstrumentsToAdd.includes(instrument.value)
+                    ? "border-primary bg-gray-50"
+                    : "border-muted"
+                }`}
+              >
+                <Checkbox
+                  checked={selectedInstrumentsToAdd.includes(instrument.value)}
+                  id={instrument.value}
+                  onCheckedChange={() =>
+                    toggleInstrumentSelection(instrument.value)
+                  }
+                />
+                <span className="text-2xl">
+                  {instrumentsIcons[instrument.value as Instrument]}
+                </span>
+                <span className="font-medium">{instrument.label}</span>
+              </Label>
+            ))
+          ) : (
+            <div className="bg-card col-span-full rounded-lg p-8 text-center">
+              <p className="text-muted-foreground text-sm">
+                Todos os instrumentos já foram adicionados
+              </p>
+            </div>
+          )}
+        </div>
+      </DialogScheduleForm>
+
+      <DialogScheduleForm
+        open={showPreviewDialog}
+        setOpen={setShowPreviewDialog}
+        title="Adicionar Integrantes"
+        description="
+        Informe os instrumetos e a quantidade de integrantes para cada
+                    função"
+        handleCleanClick={handleClearInputs}
+        handleConfirmClick={handleGeneratePreview}
+        disabled={
+          selectedInstrumentsToPreview.length === 0 || isGeneratingPreview
+        }
+        labelBtnClose="Limpar"
+        labelBtnConfirm="Gerar Preview"
+      >
+        <div className="grid grid-cols-2 gap-4">
+          {instrumentOptions.map((instrument) => (
+            <Label
+              key={instrument.value}
+              htmlFor={instrument.value}
+              className={`hover:bg-muted/50 flex cursor-pointer items-center justify-between gap-1 p-2 transition-all`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">
+                  {instrumentsIcons[instrument.value as Instrument]}
+                </span>
+                <span className="font-medium">{instrument.label}</span>
+              </div>
+
+              <Input
+                id={instrument.value}
+                type="number"
+                className="h-10 w-16"
+                placeholder="0"
+                onChange={(e) => handleInstrumentChange(e, instrument.value)}
+                value={
+                  selectedInstrumentsToPreview.find(
+                    (item) => item.instrument === instrument.value,
+                  )?.quantity
+                }
+                min={1}
+                max={10}
+              />
+            </Label>
+          ))}
+        </div>
+      </DialogScheduleForm>
     </Form>
   );
 }

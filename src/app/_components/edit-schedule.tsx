@@ -88,6 +88,7 @@ export const EditSchedule = ({ id }: { id: string }) => {
       defaultValues={defaultValues}
       loading={singleIsLoading}
       isEdit
+      bandId={bandId ?? ""}
     />
   );
 };
