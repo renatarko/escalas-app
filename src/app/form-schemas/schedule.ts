@@ -2,6 +2,7 @@ import z from "zod";
 
 export const participantRowSchema = z.object({
   id: z.string().min(1, "Selecione um participante"),
+  name: z.string().optional(),
   instrument: z.string().min(1, "Selecione uma função"),
 });
 
@@ -30,8 +31,8 @@ export const createScheduleFormSchema = z
       .min(1, "Adicione pelo menos um participante")
       .refine(
         (participants) => {
-          // Verifica se não há participantes duplicados
-          const participantIds = participants.map((p) => p.id);
+          const participantsWithId = participants.filter((p) => p.id !== "");
+          const participantIds = participantsWithId.map((p) => p.id);
           const uniqueNames = new Set(participantIds);
           return participantIds.length === uniqueNames.size;
         },

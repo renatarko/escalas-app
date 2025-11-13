@@ -44,10 +44,15 @@ export const CreateSchedule = () => {
     }
     const toastId = toast.loading("Criando esacala...");
     try {
-      const participantsPayload = data.participants.map((participant) => ({
-        participantId: participant.id,
-        instrument: participant.instrument,
-      }));
+      const participantsPayload = data.participants
+        .filter(
+          (participant) =>
+            participant.id !== "" && !participant.id.startsWith("placeholder"),
+        )
+        .map((participant) => ({
+          participantId: participant.id,
+          instrument: participant.instrument,
+        }));
 
       if (data.recurrenceType === "SINGLE") {
         await createSingleSchedule({
@@ -91,6 +96,7 @@ export const CreateSchedule = () => {
       submitLabel="Criar escala"
       loading={singleIsPending || recurrenceIsPending}
       shouldResetForm={shouldResetForm}
+      bandId={bandId ?? ""}
     />
   );
 };

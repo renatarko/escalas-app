@@ -237,6 +237,112 @@ export const scheduleRouter = createTRPCRouter({
         });
       }
     }),
+
+  generateMembersPreview: protectedProcedure
+    .input(
+      z.object({
+        bandId: z.string(),
+        formation: z.record(z.string(), z.number()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { bandId, formation } = input;
+
+      try {
+        const members = await ctx.db.bandMember.findMany({
+          where: {
+            bandId,
+            isActive: true,
+          },
+          include: { user: { select: { id: true, name: true } } },
+        });
+
+        if (!members?.length) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Nenhum membro encontrado",
+          });
+        }
+
+        const membersWithRecurrences = await Promise.all(
+          members.map(async (member) => {
+            const recurrenceCount = await ctx.db.recurrenceParticipant.count({
+              where: { participantId: member.userId },
+            });
+            return {
+              ...member,
+              recurrenceCount,
+            };
+          }),
+        );
+
+        membersWithRecurrences.sort(
+          (a, b) => a.recurrenceCount - b.recurrenceCount,
+        );
+
+        const usedUserIds = new Set<string>();
+        const preview: {
+          id: string;
+          userId: string;
+          name: string;
+          instrument: string;
+          placeholder: boolean;
+        }[] = [];
+
+        function selectMembersForInstrument(
+          instrument: string,
+          quantity: number,
+        ) {
+          const selected: typeof preview = [];
+          const candidates = membersWithRecurrences.filter(
+            (m) =>
+              !usedUserIds.has(m.userId) && m.instruments.includes(instrument),
+          );
+
+          for (let i = 0; i < quantity && i < candidates.length; i++) {
+            const member = candidates[i];
+            selected.push({
+              id: member?.id ?? "",
+              userId: member?.userId ?? "",
+              name: member?.user.name ?? "",
+              instrument,
+              placeholder: false,
+            });
+            usedUserIds.add(member?.userId ?? "");
+          }
+
+          const placeholdersNeeded = quantity - selected.length;
+          for (let i = 0; i < placeholdersNeeded; i++) {
+            selected.push({
+              id: `placeholder-${instrument}-${i}`,
+              userId: `placeholder-${instrument}-${i}`,
+              name: "A definir",
+              instrument,
+              placeholder: true,
+            });
+          }
+
+          return selected;
+        }
+
+        for (const [instrument, quantity] of Object.entries(formation)) {
+          const instrumentMembers = selectMembersForInstrument(
+            instrument,
+            quantity,
+          );
+          preview.push(...instrumentMembers);
+        }
+
+        return preview;
+      } catch (error) {
+        console.error("Erro ao gerar preview de escala:", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Erro ao gerar preview de escala",
+        });
+      }
+    }),
+
   updateSingle: protectedProcedure
     .input(
       createSingleScheduleSchema.extend({
