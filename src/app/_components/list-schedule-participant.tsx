@@ -1,16 +1,16 @@
 "use client";
 
-import { Calendar } from "lucide-react";
-import { Badge } from "./ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-import { Separator } from "./ui/separator";
-import { SetInstrument } from "@/lib/utils/setInstrument";
-import type { Instrument } from "@/lib/types";
+import { CalendarDays, Grid } from "lucide-react";
 import { api } from "@/trpc/react";
 import { useCurrentMember } from "@/lib/hooks/members";
+import { CalendarView } from "./calendar-view";
+import { useState } from "react";
+import { CardOwnSchedule } from "./card-own-schedule";
 
 export const ListScheduleParticipant = () => {
   const member = useCurrentMember();
+
+  const [viewMode, setViewMode] = useState<"calendar" | "cards">("calendar");
 
   const { data, isPending } = api.schedule.listByMemberId.useQuery(
     { memberId: member?.id ?? "" },
@@ -39,77 +39,66 @@ export const ListScheduleParticipant = () => {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-      {data?.map(({ schedule, confirmed, instrument, justification }) => (
-        <div
-          key={schedule.id}
-          className="bg-card border-input space-y-6 rounded-lg border p-4"
+    <div className="flex flex-col gap-6">
+      <div className="bg-card flex gap-2 self-center rounded-lg p-1 shadow-sm">
+        <button
+          onClick={() => setViewMode("cards")}
+          className={`flex items-center gap-2 rounded-sm px-4 py-2 transition-colors ${
+            viewMode === "cards"
+              ? "bg-primary text-white"
+              : "text-muted-foreground hover:bg-gray-100"
+          }`}
         >
-          <div className="flex w-full flex-col-reverse gap-2 sm:items-start md:flex-row md:justify-between">
-            <div className="space-y-2">
-              <p className="text-lg font-semibold">{schedule.name}</p>
-              <p className="flex items-center gap-1">
-                <Calendar className="size-4" />{" "}
-                {schedule.date.toLocaleDateString()}
-              </p>
-            </div>
+          <Grid size={18} />
+          Cards
+        </button>
+        <button
+          onClick={() => setViewMode("calendar")}
+          className={`flex items-center gap-2 rounded-md px-4 py-2 transition-colors ${
+            viewMode === "calendar"
+              ? "bg-primary text-white"
+              : "text-muted-foreground hover:bg-gray-100"
+          }`}
+        >
+          <CalendarDays size={18} />
+          Calendário
+        </button>
+      </div>
 
-            <div className="flex w-full items-center justify-end space-x-2 sm:space-x-4">
-              <Badge
-                variant="secondary"
-                className={`${schedule.recurrenceType === "SINGLE" ? "bg-cyan-500/40" : "bg-purple-500/40"}`}
-              >
-                {schedule.recurrenceType === "SINGLE" ? "único" : "recorrente"}
-              </Badge>
+      {viewMode === "calendar" && data && (
+        <CalendarView
+          isAllSchedules={false}
+          schedules={data.map(
+            ({ schedule, scheduleId, participant, instrument, confirmed }) => ({
+              ...schedule,
+              status: "PENDING",
+              name: schedule.name,
+              start: schedule.date,
+              id: scheduleId,
+              end: schedule.date,
+              title: schedule.name,
+              participants: [{ ...participant, instrument, confirmed }],
+            }),
+          )}
+        />
+      )}
 
-              <div className="flex flex-col items-end">
-                <Tooltip>
-                  <TooltipTrigger>
-                    <p className="bg-muted flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold uppercase">
-                      {schedule.createdBy.name?.slice(0, 2)}
-                    </p>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs">Criador da escala:</p>
-                    {schedule.createdBy.name}
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="flex flex-wrap justify-between gap-4 sm:flex-row sm:items-center">
-            <div className="space-y-2">
-              <p className="text-muted-foreground text-sm">Função</p>
-              <p className="bg-accent mr-2 inline-flex items-center justify-center rounded-md p-2 shadow-md">
-                {SetInstrument(instrument as Instrument).icon}
-                <span className="ml-2">
-                  {SetInstrument(instrument as Instrument).label}
-                </span>
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-muted-foreground text-sm">Justificativa</p>
-              <p className="p-2">{justification ?? "-"}</p>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-muted-foreground text-sm">Confirmação</p>
-              <Badge
-                variant="secondary"
-                className={`p-2 ${confirmed === false && "bg-destructive/50"} ${confirmed === null && "bg-chart-5/50"} ${confirmed && "bg-green-500/50"}`}
-              >
-                {confirmed && "Confirmado"}
-                {confirmed === false && "Rejeitado"}
-                {confirmed === null && "Pendente"}
-              </Badge>
-            </div>
-          </div>
-        </div>
-      ))}
+      <div className="grid w-full gap-4 md:grid-cols-2">
+        {viewMode === "cards" &&
+          data &&
+          data.length > 0 &&
+          data?.map(({ schedule, instrument, justification, confirmed }) => {
+            return (
+              <CardOwnSchedule
+                key={schedule.id}
+                schedule={{
+                  ...schedule,
+                  participant: { instrument, justification, confirmed },
+                }}
+              />
+            );
+          })}
+      </div>
     </div>
   );
 };

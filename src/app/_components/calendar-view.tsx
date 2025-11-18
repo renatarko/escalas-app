@@ -14,6 +14,7 @@ import {
 } from "./ui/dialog";
 import { CardSchedule } from "./card-schedule";
 import type { RecurrenceType, ScheduleStatus } from "@prisma/client";
+import { CardOwnSchedule } from "./card-own-schedule";
 
 const locales = { "pt-BR": ptBR };
 
@@ -26,13 +27,12 @@ const localizer = dateFnsLocalizer({
 });
 
 type Participant = {
-  participant: {
-    id: string;
-    name: string | null;
-    whatsapp: string | null;
-  };
+  id: string;
+  name: string | null;
+  whatsapp: string | null;
   instrument: string;
   confirmed: boolean | null;
+  justification: string | null;
 };
 
 type Schedule = {
@@ -48,7 +48,15 @@ type Schedule = {
   participants: Participant[];
 };
 
-export const CalendarView = ({ schedules }: { schedules: Schedule[] }) => {
+type CalendarView = {
+  schedules: Schedule[];
+  isAllSchedules?: boolean;
+};
+
+export const CalendarView = ({
+  schedules,
+  isAllSchedules = true,
+}: CalendarView) => {
   const [date, setDate] = useState(new Date());
   const [view, setView] = useState<View>("month");
   const [open, setOpen] = useState(false);
@@ -107,7 +115,16 @@ export const CalendarView = ({ schedules }: { schedules: Schedule[] }) => {
             <DialogTitle> Detalhes da Escala</DialogTitle>
             <DialogDescription />
           </DialogHeader>
-          {selectedEvent && <CardSchedule schedule={selectedEvent} />}
+          {selectedEvent && isAllSchedules ? (
+            <CardSchedule schedule={selectedEvent} />
+          ) : (
+            <CardOwnSchedule
+              schedule={{
+                ...selectedEvent,
+                participant: { ...selectedEvent?.participants[0] },
+              }}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

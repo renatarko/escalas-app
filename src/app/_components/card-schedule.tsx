@@ -116,11 +116,9 @@ const MenuOptions = ({ schedule }: MenuOptionsProps) => {
 };
 
 type Participant = {
-  participant: {
-    id: string;
-    name: string | null;
-    whatsapp: string | null;
-  };
+  id: string;
+  name: string | null;
+  whatsapp: string | null;
   instrument: string;
   confirmed: boolean | null;
 };
@@ -186,7 +184,7 @@ export const CardSchedule = ({ schedule }: CardListScheduleProps) => {
       <div className="space-y-4">
         {schedule.participants.map((participant) => (
           <div
-            key={participant.participant.id}
+            key={participant.id}
             className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="flex items-center gap-3">
@@ -199,9 +197,9 @@ export const CardSchedule = ({ schedule }: CardListScheduleProps) => {
                 </TooltipContent>
               </Tooltip>
               <div className="">
-                <p>{participant.participant.name}</p>
+                <p>{participant.name}</p>
                 <p className="text-muted-foreground text-xs">
-                  {participant.participant.whatsapp}
+                  {participant.whatsapp}
                 </p>
               </div>
             </div>
