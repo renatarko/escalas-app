@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* In your main CSS file (e.g., globals.css) */
+@source "../node_modules/@ilamy/calendar/dist";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme {
@@ -134,4 +137,71 @@
 
 h1 {
   margin: 0 !important;
+}
+
+/* Calendar Custom Styles */
+.rbc-toolbar-label {
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.rbc-header {
+  padding: 0.5rem !important;
+}
+
+.rbc-toolbar button {
+  color: var(--foreground) !important;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.rbc-toolbar .rbc-active {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+.rbc-date-cell {
+  padding: 0.5rem !important;
+}
+
+.rbc-date-cell.rbc-now.rbc-current .rbc-button-link {
+  background-color: var(--primary) !important;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  color: var(--primary-foreground) !important;
+}
+
+.rbc-day-bg.rbc-off-range-bg {
+  background-color: var(--muted) !important;
+}
+.rbc-day-bg {
+  background-color: var(--card) !important;
+}
+
+.rbc-event {
+  background-color: var(--chart-2) !important;
+  font-size: 14px;
+  padding: 0.3rem !important;
+}
+
+.rbc-button-link.rbc-show-more {
+  color: var(--muted-foreground) !important;
+  font-size: 12px;
+}
+
+.rbc-overlay {
+  background-color: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 14rem !important;
+}
+
+.rbc-overlay-header {
+  padding: 0.5rem !important;
 }
