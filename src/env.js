@@ -26,6 +26,8 @@ export const env = createEnv({
     GOOGLE_CLIENT_ID: z.string(),
     GOOGLE_CLIENT_SECRET: z.string(),
     RESEND_API_KEY: z.string(),
+    INNGEST_EVENT_KEY: z.string(),
+    INNGEST_SIGNING_KEY: z.string(),
     SMTP_HOST: z.string(),
     SMTP_PORT: z.coerce.number(),
     SMTP_USER: z.string(),
@@ -52,6 +54,8 @@ export const env = createEnv({
   runtimeEnv: {
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
     AUTH_SECRET: process.env.AUTH_SECRET,
+    INNGEST_EVENT_KEY: process.env.INNGEST_EVENT_KEY,
+    INNGEST_SIGNING_KEY: process.env.INNGEST_SIGNING_KEY,
     // AUTH_DISCORD_ID: process.env.AUTH_DISCORD_ID,
     // AUTH_DISCORD_SECRET: process.env.AUTH_DISCORD_SECRET,
     DATABASE_URL: process.env.DATABASE_URL,
