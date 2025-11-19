@@ -475,6 +475,7 @@ export const scheduleRouter = createTRPCRouter({
           scheduleId: true,
           confirmed: true,
           justification: true,
+
           schedule: {
             select: {
               name: true,
@@ -482,7 +483,10 @@ export const scheduleRouter = createTRPCRouter({
               date: true,
               time: true,
               recurrenceType: true,
-              createdBy: { select: { name: true } },
+              createdBy: { select: { name: true, email: true } },
+              recurrenceConfig: true,
+              recurrenceGroupId: true,
+              status: true,
             },
           },
           participant: {
