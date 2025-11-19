@@ -453,7 +453,17 @@ export const scheduleRouter = createTRPCRouter({
         orderBy: [{ date: "asc" }, { time: "asc" }],
       });
 
-      return schedules;
+      return schedules.map((schedule) => ({
+        ...schedule,
+        participants: schedule.participants.map(
+          ({ participant, instrument, confirmed, justification }) => ({
+            ...participant,
+            instrument,
+            confirmed,
+            justification,
+          }),
+        ),
+      }));
     }),
 
   listByMemberId: protectedProcedure
