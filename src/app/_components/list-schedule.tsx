@@ -4,12 +4,15 @@ import { api } from "@/trpc/react";
 import { useFindCurrentBandId } from "@/lib/hooks/band";
 import { CardSchedule } from "./card-schedule";
 import { CalendarDays, Grid } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CalendarView } from "./calendar-view";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 export const ListSchedule = () => {
-  const [viewMode, setViewMode] = useState<"calendar" | "cards">("calendar");
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem("scheduleViewMode");
+    return saved ?? "cards";
+  });
 
   const { bandId, isLoading } = useFindCurrentBandId();
   const { data, isPending } = api.schedule.list.useQuery(
@@ -33,6 +36,10 @@ export const ListSchedule = () => {
         };
       })
     : [];
+
+  useEffect(() => {
+    localStorage.setItem("scheduleViewMode", viewMode);
+  }, [viewMode]);
 
   return (
     <div className="flex flex-col gap-6">

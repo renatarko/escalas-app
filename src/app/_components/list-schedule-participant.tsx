@@ -4,7 +4,7 @@ import { CalendarDays, Download, Grid } from "lucide-react";
 import { api } from "@/trpc/react";
 import { useCurrentMember } from "@/lib/hooks/members";
 import { CalendarView } from "./calendar-view";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CardOwnSchedule } from "./card-own-schedule";
 import { Button } from "./ui/button";
 import { exportToCalendar } from "@/lib/utils/export-calendar";
@@ -15,12 +15,19 @@ export const ListScheduleParticipant = () => {
   const member = useCurrentMember();
   const { bandName } = useFindCurrentBandId();
 
-  const [viewMode, setViewMode] = useState<"calendar" | "cards">("calendar");
+  const [viewMode, setViewMode] = useState(() => {
+    const saved = localStorage.getItem("scheduleViewMode");
+    return saved ?? "cards";
+  });
 
   const { data, isPending } = api.schedule.listByMemberId.useQuery(
     { memberId: member?.id ?? "" },
     { enabled: !!member },
   );
+
+  useEffect(() => {
+    localStorage.setItem("scheduleViewMode", viewMode);
+  }, [viewMode]);
 
   if (isPending) {
     return (
