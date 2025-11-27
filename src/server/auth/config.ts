@@ -172,61 +172,30 @@ export const authConfig: NextAuthConfig = {
   adapter: PrismaAdapter(db) as Adapter,
   debug: process.env.NODE_ENV === "development",
   callbacks: {
-    async jwt({ token }) {
-      // if (user) {
-      //   token = {
-      //     ...token,
-      //     id: user.id,
-      //     name: user.name,
-      //     email: user.email,
-      //     image: user.image,
-      //     role: user.role,
-      //   };
-      //   return token;
-      // }
+    async signIn({ user }) {
+      // Processar convite durante o signIn (roda em Route Handler, pode modificar cookies)
+      if (!user.email) return true;
 
-      const dbUser = await db.user.findUnique({
-        where: { email: token.email ?? "" },
-        include: {
-          bandMemberships: {
-            select: {
-              band: {
-                select: { nickname: true },
-              },
-            },
-          },
-        },
-      });
+      const cookieStore = await cookies();
+      const inviteToken = cookieStore.get("invite-token")?.value;
 
-      const cookieStore = cookies();
-      const inviteToken = (await cookieStore).get("invite-token")?.value;
-      const nicknameBand = (await cookieStore).get("nicknameBand")?.value;
-
-      if (!nicknameBand && dbUser && dbUser.bandMemberships.length > 0) {
-        const firstNicknameBand = dbUser.bandMemberships[0]?.band.nickname;
-        if (firstNicknameBand) {
-          (await cookieStore).set("nicknameBand", firstNicknameBand, {
-            maxAge: 60 * 24 * 60 * 60, // 60 days
-          });
-        }
-      }
-
-      console.log({ inviteToken, dbUser });
-
-      if (inviteToken && dbUser) {
+      if (inviteToken) {
         try {
+          const dbUser = await db.user.findUnique({
+            where: { email: user.email },
+          });
+
+          if (!dbUser) return true;
+
           const invite = await db.bandInvitation.findUnique({
             where: { token: inviteToken },
           });
-
-          console.log({ invite });
 
           if (
             invite &&
             invite.email === dbUser.email &&
             invite.expiresAt > new Date()
           ) {
-            // Verificar se já é membro
             const existingMember = await db.bandMember.findUnique({
               where: {
                 bandId_userId: {
@@ -237,7 +206,6 @@ export const authConfig: NextAuthConfig = {
             });
 
             if (!existingMember) {
-              // Criar membro e deletar convite
               await db.$transaction([
                 db.bandMember.create({
                   data: {
@@ -253,7 +221,6 @@ export const authConfig: NextAuthConfig = {
                 }),
               ]);
 
-              // Atualizar nome do usuário se veio do convite e usuário não tem nome
               if (invite.name && !dbUser.name) {
                 await db.user.update({
                   where: { id: dbUser.id },
@@ -261,47 +228,53 @@ export const authConfig: NextAuthConfig = {
                 });
               }
 
-              // Definir a organização do convite como atual
               const band = await db.band.findUnique({
                 where: { id: invite.bandId },
                 select: { nickname: true },
               });
 
               if (band?.nickname) {
-                (await cookieStore).set("nicknameBand", band.nickname, {
+                cookieStore.set("nicknameBand", band.nickname, {
                   maxAge: 60 * 24 * 60 * 60,
                 });
               }
             }
           }
 
-          // Sempre limpar o cookie de convite após processar
-          // await db.$transaction([
-          //   db.bandMember.create({
-          //     data: {
-          //       userId: dbUser.id,
-          //       bandId: invite.bandId,
-          //       joinedAt: new Date(),
-          //       role: invite.role ?? undefined,
-          //     },
-          //   }),
-          //   db.bandInvitation.update({
-          //     where: { token: inviteToken },
-          //     data: { status: "ACCEPTED" },
-          //   }),
-          //   db.user.update({
-          //     where: { email: invite.email },
-          //     data: { name: "aqui seria o nome dado" },
-          //   }),
-          // ]);
-
-          (await cookieStore).delete("invite-token");
-          (await cookieStore).delete("invite-email");
-          console.log("Agora seria deletar o cookie invite-token");
+          cookieStore.delete("invite-token");
+          cookieStore.delete("invite-email");
         } catch (error) {
-          console.error("JWT Callback - Failed to process invite:", error);
+          console.error("SignIn Callback - Failed to process invite:", error);
         }
       }
+
+      // Definir nicknameBand se não existir
+      const nicknameBand = cookieStore.get("nicknameBand")?.value;
+      if (!nicknameBand) {
+        const dbUser = await db.user.findUnique({
+          where: { email: user.email },
+          include: {
+            bandMemberships: {
+              select: { band: { select: { nickname: true } } },
+              take: 1,
+            },
+          },
+        });
+
+        const firstNickname = dbUser?.bandMemberships[0]?.band.nickname;
+        if (firstNickname) {
+          cookieStore.set("nicknameBand", firstNickname, {
+            maxAge: 60 * 24 * 60 * 60,
+          });
+        }
+      }
+
+      return true;
+    },
+    async jwt({ token }) {
+      const dbUser = await db.user.findUnique({
+        where: { email: token.email ?? "" },
+      });
 
       if (dbUser) {
         token = {
