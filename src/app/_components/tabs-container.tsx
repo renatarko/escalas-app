@@ -10,16 +10,19 @@ import { TabsContentCustom } from "@/app/_components/tab-content-custom";
 import React from "react";
 import { CreateSchedule } from "./create-schedule";
 import { ListInvite } from "./list-invite";
-import { useCurrentMember } from "@/lib/hooks/members";
+import { getCurrentMembership } from "@/lib/hooks/members";
 import { ListScheduleParticipant } from "./list-schedule-participant";
+import { isAdmin } from "@/lib/utils/role-checker";
 
 export function TabsContainer() {
-  const member = useCurrentMember();
+  const { membership } = getCurrentMembership();
   const { tab, setTab } = useTabsStore();
 
   const handleTabChange = (value: string) => {
     setTab(value as TabsStoreProps);
   };
+
+  const isUserAdmin = isAdmin(membership);
 
   const renderTabsContent = React.useMemo(() => {
     switch (tab) {
@@ -37,8 +40,7 @@ export function TabsContainer() {
         );
       case "create-scales":
         return (
-          member &&
-          member.role !== "MEMBER" && (
+          isUserAdmin && (
             <TabsContentCustom title="Criar Escala">
               <CreateSchedule />
             </TabsContentCustom>
@@ -46,8 +48,7 @@ export function TabsContainer() {
         );
       case "participants":
         return (
-          member &&
-          member.role !== "MEMBER" && (
+          isUserAdmin && (
             <TabsContentCustom title="Gerenciar Integrantes">
               <ListParticipants />
             </TabsContentCustom>
@@ -55,8 +56,7 @@ export function TabsContainer() {
         );
       case "invitations":
         return (
-          member &&
-          member.role !== "MEMBER" && (
+          isUserAdmin && (
             <TabsContentCustom title="Convidar Integrantes">
               <CreateParticipantForm />
               <ListInvite />
@@ -66,7 +66,7 @@ export function TabsContainer() {
       default:
         return null;
     }
-  }, [tab, member]);
+  }, [tab, isUserAdmin]);
 
   return (
     <Tabs

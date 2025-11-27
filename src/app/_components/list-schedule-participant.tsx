@@ -2,7 +2,7 @@
 
 import { CalendarDays, Download, Grid } from "lucide-react";
 import { api } from "@/trpc/react";
-import { useCurrentMember } from "@/lib/hooks/members";
+import { getCurrentMembership } from "@/lib/hooks/members";
 import { CalendarView } from "./calendar-view";
 import { useEffect, useState } from "react";
 import { CardOwnSchedule } from "./card-own-schedule";
@@ -12,7 +12,7 @@ import { useFindCurrentBandId } from "@/lib/hooks/band";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 export const ListScheduleParticipant = () => {
-  const member = useCurrentMember();
+  const { membership } = getCurrentMembership();
   const { bandName } = useFindCurrentBandId();
 
   const [viewMode, setViewMode] = useState(() => {
@@ -21,8 +21,8 @@ export const ListScheduleParticipant = () => {
   });
 
   const { data, isPending } = api.schedule.listByMemberId.useQuery(
-    { memberId: member?.id ?? "" },
-    { enabled: !!member },
+    { memberId: membership?.id ?? "" },
+    { enabled: !!membership },
   );
 
   useEffect(() => {

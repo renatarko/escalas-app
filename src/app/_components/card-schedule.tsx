@@ -27,7 +27,8 @@ import { AlertCustom } from "./custom-alert";
 import { useState } from "react";
 import type { RecurrenceType, ScheduleStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
-import { useCurrentMember } from "@/lib/hooks/members";
+import { getCurrentMembership } from "@/lib/hooks/members";
+import { isAdmin } from "@/lib/utils/role-checker";
 
 type MenuOptionsProps = {
   schedule: {
@@ -136,7 +137,8 @@ type CardListScheduleProps = {
 };
 
 export const CardSchedule = ({ schedule }: CardListScheduleProps) => {
-  const member = useCurrentMember();
+  const { membership } = getCurrentMembership();
+  const isUserAdmin = isAdmin(membership);
 
   return (
     <div
@@ -173,9 +175,7 @@ export const CardSchedule = ({ schedule }: CardListScheduleProps) => {
             </Tooltip>
           </div>
 
-          {member && member.role !== "MEMBER" && (
-            <MenuOptions schedule={schedule} />
-          )}
+          {isUserAdmin && <MenuOptions schedule={schedule} />}
         </div>
       </div>
 
@@ -214,7 +214,7 @@ export const CardSchedule = ({ schedule }: CardListScheduleProps) => {
                 {participant.confirmed === null && "Pendente"}
               </Badge>
 
-              {member && member.role !== "MEMBER" && !participant.confirmed && (
+              {isUserAdmin && !participant.confirmed && (
                 <Button variant="outline" size="icon-sm">
                   <Send className="size-4 text-green-600" />
                 </Button>

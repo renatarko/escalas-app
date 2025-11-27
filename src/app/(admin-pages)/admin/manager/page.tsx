@@ -12,8 +12,10 @@ import {
   DialogTrigger,
 } from "@/app/_components/ui/dialog";
 import { Spinner } from "@/app/_components/ui/spinner";
+import { Unauthorized } from "@/app/_components/unauthorized";
+import { useAbility } from "@/lib/auth/hooks/useAbility";
 import { memberRoleLabel } from "@/lib/constants";
-import { useCurrentMember } from "@/lib/hooks/members";
+import { getCurrentMembership } from "@/lib/hooks/members";
 import {
   getCurrentBandFromCookie,
   setBandInCookie,
@@ -27,7 +29,7 @@ import { useEffect, useState } from "react";
 
 export default function DashboardHome() {
   const { data: session } = useSession();
-  const member = useCurrentMember();
+  const { membership } = getCurrentMembership();
   const { data: bands, isPending } = api.band.getBands.useQuery();
 
   const currentNickname = getCurrentBandFromCookie();
@@ -52,6 +54,12 @@ export default function DashboardHome() {
       }
     }
   }, [redirecting, nickname, currentNickname]);
+
+  const ability = useAbility();
+
+  if (!ability.can("manage", "User")) {
+    return <Unauthorized />;
+  }
 
   return (
     <div className="sm:pt-8">
@@ -104,7 +112,7 @@ export default function DashboardHome() {
                     onClick={() => handleBandChange(band.nickname)}
                   >
                     <Settings className="mr-2 h-4 w-4" />
-                    {member && member.role !== "MEMBER"
+                    {membership && membership.role !== "MEMBER"
                       ? "Gerenciar"
                       : "Ver detalhes"}
                   </Button>

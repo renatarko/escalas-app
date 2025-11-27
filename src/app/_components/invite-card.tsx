@@ -22,7 +22,8 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
-import { useCurrentMember } from "@/lib/hooks/members";
+import { getCurrentMembership } from "@/lib/hooks/members";
+import { isAdmin } from "@/lib/utils/role-checker";
 
 type MenuOptionsProps = {
   invite: {
@@ -110,7 +111,7 @@ type InviteCardProps = {
 };
 
 export const InviteCard = ({ invitation }: InviteCardProps) => {
-  const member = useCurrentMember();
+  const { membership } = getCurrentMembership();
 
   const setBackgroundColorByStatus = (status: InvitationStatus) => {
     if (status === "CANCELLED") return "bg-destructive";
@@ -118,6 +119,8 @@ export const InviteCard = ({ invitation }: InviteCardProps) => {
     if (status === "EXPIRED") return "bg-orange-500";
     if (status === "PENDING") return "bg-yellow-600";
   };
+
+  const isUserAdmin = isAdmin(membership);
 
   return (
     <div
@@ -162,11 +165,9 @@ export const InviteCard = ({ invitation }: InviteCardProps) => {
           {invitationStatusLabel[invitation.status]}
         </Badge>
 
-        {member &&
-          member.role !== "MEMBER" &&
-          invitation.status !== "ACCEPTED" && (
-            <MenuOptions invite={invitation} />
-          )}
+        {membership && isUserAdmin && invitation.status !== "ACCEPTED" && (
+          <MenuOptions invite={invitation} />
+        )}
       </div>
     </div>
   );
