@@ -22,6 +22,19 @@ export const useFindManyMembers = () => {
   return { members, isLoading, refetch };
 };
 
+export const getCurrentMembership = () => {
+  const nickname = getCurrentBandFromCookie();
+  const { data, isLoading } = api.bandMember.getUserMembership.useQuery({
+    nickname: nickname ?? "",
+  });
+
+  return {
+    membership: data?.membership,
+    band: data?.band,
+    isLoading,
+  };
+};
+
 export const useCurrentMember = () => {
   const { data: bands } = api.band.getBands.useQuery();
   const { data: session } = useSession();

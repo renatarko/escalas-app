@@ -21,12 +21,13 @@ import {
 import { useTabsStore, type TabsStoreProps } from "@/stores/use-tabs-store";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useCurrentMember } from "@/lib/hooks/members";
+import { getCurrentMembership } from "@/lib/hooks/members";
+import { isAdmin } from "@/lib/utils/role-checker";
 
 export const UserLogged = () => {
   const { data: session } = useSession();
   const { tab, setTab } = useTabsStore();
-  const member = useCurrentMember();
+  const { membership, band } = getCurrentMembership();
 
   const router = useRouter();
   const pathname = usePathname();
@@ -51,7 +52,7 @@ export const UserLogged = () => {
   };
 
   const redirectManagerRoute = () => {
-    if (member?.hasSomeBand) {
+    if (band) {
       router.push("/admin/manager");
       return;
     }
@@ -62,6 +63,8 @@ export const UserLogged = () => {
     if (pathname !== "/admin") return;
     if (currentTab === tab) return "bg-primary/5 text-primary";
   };
+
+  const isUserAdmin = isAdmin(membership);
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -96,7 +99,7 @@ export const UserLogged = () => {
           Minhas Escalas
         </DropdownMenuItem>
 
-        {member && member.role !== "MEMBER" && (
+        {isUserAdmin && (
           <DropdownMenuItem
             className={cn(setActiveColorIfTabIsActive("create-scales"))}
             onClick={() => handleTabChange("create-scales")}
@@ -106,7 +109,7 @@ export const UserLogged = () => {
           </DropdownMenuItem>
         )}
 
-        {member && member.role !== "MEMBER" && (
+        {isUserAdmin && (
           <DropdownMenuItem
             className={cn(setActiveColorIfTabIsActive("participants"))}
             onClick={() => handleTabChange("participants")}
@@ -116,7 +119,7 @@ export const UserLogged = () => {
           </DropdownMenuItem>
         )}
 
-        {member && member.role !== "MEMBER" && (
+        {isUserAdmin && (
           <DropdownMenuItem
             className={cn(setActiveColorIfTabIsActive("invitations"))}
             onClick={() => handleTabChange("invitations")}

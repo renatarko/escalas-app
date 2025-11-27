@@ -26,7 +26,8 @@ import { api } from "@/trpc/react";
 import { toast } from "sonner";
 import { useFindCurrentBandId } from "@/lib/hooks/band";
 import { Switch } from "./ui/switch";
-import { useCurrentMember } from "@/lib/hooks/members";
+import { getCurrentMembership } from "@/lib/hooks/members";
+import { isAdmin } from "@/lib/utils/role-checker";
 
 type ParticipantProps = {
   id: string;
@@ -44,7 +45,7 @@ export const CreatedParticipant = ({
   isActive,
 }: ParticipantProps) => {
   const { bandId } = useFindCurrentBandId();
-  const member = useCurrentMember();
+  const { membership } = getCurrentMembership();
 
   const [open, setOpen] = useState({
     edit: false,
@@ -123,6 +124,8 @@ export const CreatedParticipant = ({
     }
   };
 
+  const isUserAdmin = isAdmin(membership);
+
   return (
     <div
       key={id}
@@ -160,7 +163,7 @@ export const CreatedParticipant = ({
         )}
       </div>
 
-      {member?.role !== "MEMBER" && (
+      {!isUserAdmin && (
         <div className="flex items-center gap-4">
           <div className="flex flex-col gap-1 text-center">
             <span className="text-muted-foreground text-xs">

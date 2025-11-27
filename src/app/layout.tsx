@@ -2,12 +2,13 @@ import "@/styles/globals.css";
 
 import { type Metadata } from "next";
 import { Poppins } from "next/font/google";
-
 import { TRPCReactProvider } from "@/trpc/react";
 import { Toaster } from "./_components/ui/sonner";
 import { Header } from "./_components/header";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/server/auth";
+import { AbilityProvider } from "@/lib/utils/abilityContext";
+import { getCurrentMembership } from "@/lib/auth/ability";
 
 const metadataObject = {
   url: "https://escalasapp.vercel.app",
@@ -76,16 +77,29 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const session = await auth();
+  let membership = null;
+
+  if (session?.user) {
+    membership = await getCurrentMembership();
+  }
+
   return (
     <html lang="en" className={`${poppins.variable}`}>
       <body className="bg-linear-to-b from-slate-50 to-white">
         <TRPCReactProvider>
-          <SessionProvider session={session}>
-            <Header />
-            {children}
-          </SessionProvider>
+          <AbilityProvider
+            user={{
+              id: membership?.userId ?? "",
+              role: membership?.role ?? "MEMBER",
+            }}
+          >
+            <SessionProvider session={session}>
+              <Header />
+              {children}
+            </SessionProvider>
+            <Toaster />
+          </AbilityProvider>
         </TRPCReactProvider>
-        <Toaster />
       </body>
     </html>
   );
