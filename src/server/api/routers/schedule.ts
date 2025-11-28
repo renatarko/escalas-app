@@ -456,11 +456,18 @@ export const scheduleRouter = createTRPCRouter({
       return schedules.map((schedule) => ({
         ...schedule,
         participants: schedule.participants.map(
-          ({ participant, instrument, confirmed, justification }) => ({
+          ({
+            participant,
+            instrument,
+            confirmed,
+            justification,
+            notificationSent,
+          }) => ({
             ...participant,
             instrument,
             confirmed,
             justification,
+            notified: notificationSent,
           }),
         ),
       }));
@@ -485,7 +492,7 @@ export const scheduleRouter = createTRPCRouter({
           scheduleId: true,
           confirmed: true,
           justification: true,
-
+          notificationSent: true,
           schedule: {
             select: {
               name: true,
@@ -511,7 +518,15 @@ export const scheduleRouter = createTRPCRouter({
         orderBy: [{ schedule: { date: "asc" } }, { schedule: { time: "asc" } }],
       });
 
-      return schedules;
+      // return schedules;
+      return schedules.map((schedule) => ({
+        ...schedule,
+        participant: {
+          ...schedule.participant,
+          notified: schedule.notificationSent,
+          justification: schedule.justification,
+        },
+      }));
     }),
 
   // Buscar escala por ID

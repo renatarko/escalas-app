@@ -4,18 +4,16 @@ import {
   Calendar,
   CalendarSync,
   Check,
+  ChevronDown,
+  Dot,
   EllipsisVertical,
   Pencil,
   Send,
   Trash,
+  Users2,
 } from "lucide-react";
-import { SetInstrument } from "@/lib/utils/setInstrument";
-import type { Instrument } from "@/lib/types";
-import { Button } from "./ui/button";
 import { api } from "@/trpc/react";
 import { Badge } from "./ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
-import { Separator } from "./ui/separator";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,11 +22,17 @@ import {
 } from "./ui/dropdown-menu";
 import { toast } from "sonner";
 import { AlertCustom } from "./custom-alert";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { RecurrenceType, ScheduleStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
-import { getCurrentMembership } from "@/lib/hooks/members";
-import { isAdmin } from "@/lib/utils/role-checker";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
+import { CardMemberSchedule } from "./card-member-schedule";
 
 type MenuOptionsProps = {
   schedule: {
@@ -84,10 +88,10 @@ const MenuOptions = ({ schedule }: MenuOptionsProps) => {
   return (
     <>
       <DropdownMenu modal={false}>
-        <DropdownMenuTrigger asChild>
-          <Button size="icon-sm" variant="outline">
-            <EllipsisVertical className="size-4" />
-          </Button>
+        <DropdownMenuTrigger
+          className={`hover:bg-muted/10 rounded-md bg-transparent p-2 duration-150`}
+        >
+          <EllipsisVertical className="size-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           <DropdownMenuItem onClick={handleEdit}>
@@ -149,6 +153,8 @@ type Participant = {
   whatsapp: string | null;
   instrument: string;
   confirmed: boolean | null;
+  notified: boolean | null;
+  justification: string | null;
 };
 
 type CardListScheduleProps = {
@@ -163,138 +169,90 @@ type CardListScheduleProps = {
   };
 };
 
-const ParticipantNotifyButton = ({
-  scheduleId,
-  participantId,
-  hasWhatsapp,
-}: {
-  scheduleId: string;
-  participantId: string;
-  hasWhatsapp: boolean;
-}) => {
-  const { mutateAsync: sendNotification, isPending } =
-    api.whatsapp.sendParticipantNotification.useMutation();
+export const CardSchedule = ({ schedule }: CardListScheduleProps) => {
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
-  const handleNotify = async () => {
-    try {
-      await sendNotification({ scheduleId, participantId });
-      toast.success("Notificação enviada com sucesso");
-    } catch (error) {
-      console.log(error);
-      toast.error("Erro ao enviar notificação");
-    }
+  const toggleCard = (cardId: string) => {
+    setExpandedCard(expandedCard === cardId ? null : cardId);
   };
 
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          onClick={handleNotify}
-          disabled={isPending || !hasWhatsapp}
-        >
-          <Send className="size-4 text-green-600" />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>
-        {hasWhatsapp
-          ? "Enviar notificação via WhatsApp"
-          : "WhatsApp não cadastrado"}
-      </TooltipContent>
-    </Tooltip>
-  );
-};
-
-export const CardSchedule = ({ schedule }: CardListScheduleProps) => {
-  const { membership } = getCurrentMembership();
-  const isUserAdmin = isAdmin(membership);
+  const confirmedStatus = useMemo(() => {
+    const members = schedule.participants;
+    const confirmed = members.filter((m) => m.confirmed).length;
+    const total = members.length;
+    return { confirmed, total, pending: total - confirmed };
+  }, [schedule]);
 
   return (
-    <div
-      key={schedule.id}
-      className="bg-card border-input min-h-60 space-y-6 rounded-lg border p-4"
-    >
-      <div className="flex w-full items-start justify-between gap-4">
-        <div className="space-y-2">
-          <p className="text-lg font-semibold">{schedule.name}</p>
-          <p className="flex items-center gap-1">
-            <Calendar className="size-4" /> {schedule.date.toLocaleDateString()}
-          </p>
-        </div>
-
-        <div className="flex items-center justify-end space-x-2 sm:space-x-4">
+    <Card className="p-0">
+      <CardHeader className="bg-primary text-primary-foreground gap-4 rounded-t-lg p-4">
+        <div className="flex w-full items-center justify-between">
           <Badge
             variant="secondary"
-            className={`${schedule.recurrenceType === "SINGLE" ? "bg-cyan-500/40" : "bg-purple-500/40"}`}
+            className={`text-white ${schedule.recurrenceType === "SINGLE" ? "bg-cyan-500" : "bg-indigo-500"}`}
           >
             {schedule.recurrenceType === "SINGLE" ? "único" : "recorrente"}
           </Badge>
-
-          <div className="flex flex-col items-end">
-            <Tooltip>
-              <TooltipTrigger>
-                <p className="bg-muted flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold uppercase">
-                  {schedule.createdBy.name?.slice(0, 2)}
-                </p>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="text-xs">Criador da escala:</p>
-                {schedule.createdBy.name}
-              </TooltipContent>
-            </Tooltip>
-          </div>
-
-          {isUserAdmin && <MenuOptions schedule={schedule} />}
+          <MenuOptions schedule={schedule} />
         </div>
-      </div>
 
-      <Separator />
+        <CardTitle>{schedule.name}</CardTitle>
+        <CardDescription className="text-muted text-md flex flex-wrap gap-2 font-light sm:items-center sm:gap-4">
+          <span className="flex items-center gap-2">
+            <Calendar className="size-4" />
+            {schedule.date.toLocaleDateString()}
+          </span>
+          <span className="flex items-center gap-2">
+            <Users2 className="size-4" />
+            <b>{confirmedStatus.total}</b>
+            {confirmedStatus.total > 1 ? "Integrantes" : "Integrante"}
+          </span>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <div className="flex flex-col items-center justify-between gap-2 sm:flex-row sm:gap-4">
+          <p className="text-muted-foreground text-xs">
+            Criado por {schedule.createdBy.name}
+          </p>
 
-      <div className="space-y-4">
-        {schedule.participants.map((participant) => (
-          <div
-            key={participant.id}
-            className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="flex items-center gap-3">
-              <Tooltip>
-                <TooltipTrigger className="bg-accent mr-2 inline-flex items-center justify-center rounded-md p-2 shadow-md">
-                  {SetInstrument(participant.instrument as Instrument).icon}
-                </TooltipTrigger>
-                <TooltipContent>
-                  {SetInstrument(participant.instrument as Instrument).label}
-                </TooltipContent>
-              </Tooltip>
-              <div className="">
-                <p>{participant.name}</p>
-                <p className="text-muted-foreground text-xs">
-                  {participant.whatsapp}
-                </p>
-              </div>
-            </div>
-
-            <div className="space-x-2">
-              <Badge
-                variant="secondary"
-                className={`${participant.confirmed === false && "bg-destructive/50"} ${participant.confirmed === null && "bg-chart-5/50"} ${participant.confirmed && "bg-green-500/50"}`}
-              >
-                {participant.confirmed && "Confirmado"}
-                {participant.confirmed === false && "Rejeitado"}
-                {participant.confirmed === null && "Pendente"}
-              </Badge>
-
-              {isUserAdmin && !participant.confirmed && (
-                <ParticipantNotifyButton
-                  scheduleId={schedule.id}
-                  participantId={participant.id}
-                  hasWhatsapp={!!participant.whatsapp}
-                />
-              )}
-            </div>
+          <div className="flex items-center gap-4">
+            <p className="flex items-center text-xs">
+              <Dot className="size-6 text-red-500" />
+              {confirmedStatus.pending} Pendentes
+            </p>
+            <p className="flex items-center text-xs">
+              <Dot className="size-6 text-green-500" />
+              {confirmedStatus.confirmed} Confirmados
+            </p>
           </div>
-        ))}
-      </div>
-    </div>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-4">
+          <button
+            onClick={() => toggleCard(schedule.id)}
+            className="text-muted-foreground hover:text-primary flex w-full items-center justify-between text-sm font-medium transition-colors"
+          >
+            <span className="text-xs">Integrantes da Escala</span>
+            <ChevronDown
+              className={`transform transition-transform ${expandedCard ? "rotate-180" : ""}`}
+            />
+          </button>
+
+          <div
+            className={`space-y-2 ${expandedCard === schedule.id ? "" : "max-h-64 overflow-hidden"}`}
+          >
+            {schedule.participants.map((member) => {
+              return (
+                <CardMemberSchedule
+                  {...member}
+                  key={member.id}
+                  scheduleId={schedule.id}
+                />
+              );
+            })}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };

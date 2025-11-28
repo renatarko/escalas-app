@@ -110,7 +110,7 @@ export const CalendarView = ({
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger />
-        <DialogContent>
+        <DialogContent className="w-full sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle> Detalhes da Escala</DialogTitle>
             <DialogDescription />
