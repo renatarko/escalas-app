@@ -9,11 +9,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./ui/alert-dialog";
+import { Spinner } from "./ui/spinner";
 
 type AlertCustomProps = {
   title?: string;
   description?: string;
   disabled?: boolean;
+  loading?: boolean;
   open: boolean;
   setOpen: (open: boolean) => void;
   handleConfirm: () => void;
@@ -23,6 +25,7 @@ export const AlertCustom = ({
   title = "Tem certeza?",
   description = "Esta é uma ação irreversível, deseja realmente prosseguir?",
   disabled,
+  loading,
   open,
   setOpen,
   handleConfirm,
@@ -39,8 +42,11 @@ export const AlertCustom = ({
           <AlertDialogCancel onClick={() => setOpen(false)}>
             Cancelar
           </AlertDialogCancel>
-          <AlertDialogAction disabled={disabled} onClick={handleConfirm}>
-            Confirmar
+          <AlertDialogAction
+            disabled={disabled ?? !!loading}
+            onClick={handleConfirm}
+          >
+            {loading && <Spinner className="size-4" />} Confirmar
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

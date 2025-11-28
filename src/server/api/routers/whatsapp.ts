@@ -1,0 +1,249 @@
+import { z } from "zod";
+import { createTRPCRouter, protectedProcedure } from "../trpc";
+import { TRPCError } from "@trpc/server";
+import { whatsappService, evolutionAPI } from "@/lib/whatsapp";
+import { processScheduleNotifications } from "@/server/services/whatsapp-notifications";
+
+export const whatsappRouter = createTRPCRouter({
+  // Obter status da conexão
+  getConnectionStatus: protectedProcedure.query(async () => {
+    try {
+      const state = await whatsappService.getConnectionState();
+      return {
+        connected: state.state === "open",
+        state: state.state,
+        instance: state.instance,
+      };
+    } catch (error) {
+      return {
+        connected: false,
+        state: "error" as const,
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      };
+    }
+  }),
+
+  // Obter QR Code para conexão
+  getQRCode: protectedProcedure.query(async () => {
+    try {
+      const qrCode = await whatsappService.getQRCode();
+      return {
+        success: true,
+        qrCode: qrCode.base64,
+        code: qrCode.code,
+        pairingCode: qrCode.pairingCode,
+      };
+    } catch (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message:
+          error instanceof Error ? error.message : "Erro ao obter QR Code",
+      });
+    }
+  }),
+
+  // Criar instância do WhatsApp
+  createInstance: protectedProcedure
+    .input(z.object({ instanceName: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      try {
+        const instance = await evolutionAPI.createInstance(input.instanceName);
+        return {
+          success: true,
+          instance,
+        };
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            error instanceof Error ? error.message : "Erro ao criar instância",
+        });
+      }
+    }),
+
+  // Desconectar WhatsApp
+  disconnect: protectedProcedure.mutation(async () => {
+    try {
+      await evolutionAPI.logout();
+      return { success: true };
+    } catch (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: error instanceof Error ? error.message : "Erro ao desconectar",
+      });
+    }
+  }),
+
+  // Reiniciar instância
+  restartInstance: protectedProcedure.mutation(async () => {
+    try {
+      await evolutionAPI.restartInstance();
+      return { success: true };
+    } catch (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: error instanceof Error ? error.message : "Erro ao reiniciar",
+      });
+    }
+  }),
+
+  // Enviar mensagem de teste
+  sendTestMessage: protectedProcedure
+    .input(
+      z.object({
+        number: z.string().min(10, "Número inválido"),
+        message: z.string().min(1, "Mensagem não pode estar vazia"),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const result = await whatsappService.sendMessage(
+          input.number,
+          input.message,
+        );
+
+        if (!result.success) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: result.error ?? "Erro ao enviar mensagem",
+          });
+        }
+
+        return {
+          success: true,
+          messageId: result.messageId,
+        };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            error instanceof Error ? error.message : "Erro ao enviar mensagem",
+        });
+      }
+    }),
+
+  // Verificar se número tem WhatsApp
+  checkNumber: protectedProcedure
+    .input(z.object({ number: z.string() }))
+    .mutation(async ({ input }) => {
+      try {
+        const result = await evolutionAPI.checkNumberExists(input.number);
+        return result;
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            error instanceof Error ? error.message : "Erro ao verificar número",
+        });
+      }
+    }),
+
+  // Enviar notificação de escala
+  sendScheduleNotification: protectedProcedure
+    .input(
+      z.object({
+        scheduleId: z.string(),
+        type: z
+          .enum(["notification", "reminder", "cancellation", "update"])
+          .default("notification"),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const result = await processScheduleNotifications({
+          scheduleId: input.scheduleId,
+          type: input.type,
+        });
+
+        return result;
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Erro ao agendar notificações",
+        });
+      }
+    }),
+
+  // Enviar notificação para participante específico
+  sendParticipantNotification: protectedProcedure
+    .input(
+      z.object({
+        scheduleId: z.string(),
+        participantId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const schedule = await ctx.db.schedule.findUnique({
+        where: { id: input.scheduleId },
+        include: {
+          band: { select: { name: true } },
+          participants: {
+            where: { participantId: input.participantId },
+            include: {
+              participant: {
+                select: { id: true, name: true, whatsapp: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!schedule) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Escala não encontrada",
+        });
+      }
+
+      const participant = schedule.participants[0];
+      if (!participant) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Participante não encontrado na escala",
+        });
+      }
+
+      if (!participant.participant.whatsapp) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Participante não tem WhatsApp cadastrado",
+        });
+      }
+
+      try {
+        const result = await whatsappService.sendScheduleNotification(
+          participant.participant.whatsapp,
+          participant.participant.name ?? "Participante",
+          schedule.band.name,
+          schedule.name ?? "Escala",
+          schedule.date.toISOString(),
+          schedule.time?.toISOString(),
+          participant.instrument,
+        );
+
+        if (result.success) {
+          await ctx.db.scheduleParticipant.update({
+            where: { id: participant.id },
+            data: {
+              notificationSent: true,
+              notificationSentAt: new Date(),
+            },
+          });
+        }
+
+        return result;
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Erro ao enviar notificação",
+        });
+      }
+    }),
+});

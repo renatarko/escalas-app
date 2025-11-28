@@ -5,6 +5,7 @@ import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 import { bandRouter } from "./routers/band";
 import { invitationRouter } from "./routers/invitation";
 import { memberRouter } from "./routers/member";
+import { whatsappRouter } from "./routers/whatsapp";
 
 /**
  * This is the primary router for your server.
@@ -18,6 +19,7 @@ export const appRouter = createTRPCRouter({
   schedule: scheduleRouter,
   recurrence: recurrenceRouter,
   invitation: invitationRouter,
+  whatsapp: whatsappRouter,
 });
 
 // export type definition of API
