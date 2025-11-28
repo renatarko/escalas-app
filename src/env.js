@@ -33,6 +33,10 @@ export const env = createEnv({
     SMTP_USER: z.string(),
     SMTP_PASSWORD: z.string(),
     SMTP_FROM: z.string(),
+    // Evolution API (WhatsApp)
+    EVOLUTION_API_URL: z.string().url(),
+    EVOLUTION_API_KEY: z.string(),
+    EVOLUTION_INSTANCE_NAME: z.string(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -68,6 +72,10 @@ export const env = createEnv({
     SMTP_USER: process.env.SMTP_USER,
     SMTP_PASSWORD: process.env.SMTP_PASSWORD,
     SMTP_FROM: process.env.SMTP_FROM,
+    // Evolution API (WhatsApp)
+    EVOLUTION_API_URL: process.env.EVOLUTION_API_URL,
+    EVOLUTION_API_KEY: process.env.EVOLUTION_API_KEY,
+    EVOLUTION_INSTANCE_NAME: process.env.EVOLUTION_INSTANCE_NAME,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

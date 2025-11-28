@@ -1,0 +1,352 @@
+import type { Instrument } from "../types";
+import { SetInstrument } from "../utils/setInstrument";
+import { evolutionAPI } from "./evolution-api";
+import type {
+  ScheduleNotificationPayload,
+  WhatsAppNotificationResult,
+} from "./types";
+
+class WhatsAppService {
+  /**
+   * Formata a data para exibição em português
+   */
+  private formatDate(dateStr: string): string {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("pt-BR", {
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+  }
+
+  /**
+   * Formata a hora para exibição
+   */
+  private formatTime(timeStr?: string): string {
+    if (!timeStr) return "";
+    const date = new Date(timeStr);
+    return date.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  /**
+   * Gera mensagem de notificação de escala
+   */
+  generateScheduleNotificationMessage(
+    participantName: string,
+    bandName: string,
+    scheduleName: string,
+    date: string,
+    time?: string,
+    instrument?: string,
+  ): string {
+    const formattedDate = this.formatDate(date);
+    const formattedTime = time ? ` às ${this.formatTime(time)}` : "";
+    const instrumentText =
+      SetInstrument(instrument as Instrument).label ??
+      instrument ??
+      "Instrumento não cadastrado";
+
+    return `🎵 *Nova Escala - Grupo: ${bandName}*
+
+Olá, ${participantName}! 👋
+
+Você foi escalado(a) para:
+
+ ➡️ *Escala:* ${scheduleName} \n
+ 🗓️ *Data:* ${formattedDate}${formattedTime} \n
+ 🎸 *Instrumento:* ${instrumentText}
+
+Por favor, confirme sua presença o mais breve possível.
+
+_Mensagem enviada automaticamente pelo sistema de escalas._`;
+  }
+
+  /**
+   * Gera mensagem de lembrete de escala
+   */
+  generateScheduleReminderMessage(
+    participantName: string,
+    bandName: string,
+    scheduleName: string,
+    date: string,
+    time?: string,
+    instrument?: string,
+  ): string {
+    const formattedDate = this.formatDate(date);
+    const formattedTime = time ? ` às ${this.formatTime(time)}` : "";
+    const instrumentText =
+      SetInstrument(instrument as Instrument).label ??
+      instrument ??
+      "Instrumento não cadastrado";
+
+    return `⏰ *Lembrete de Escala - Grupo: ${bandName}*
+
+Olá, ${participantName}! 👋
+
+Não esqueça que você está escalado(a) para:
+
+ ➡️ *Escala:* ${scheduleName} \n
+ 🗓️ *Data:* ${formattedDate}${formattedTime} \n
+ 🎸 *Instrumento:* ${instrumentText}
+
+Nos vemos lá! 🙏
+
+_Mensagem enviada automaticamente pelo sistema de escalas._`;
+  }
+
+  /**
+   * Gera mensagem de cancelamento de escala
+   */
+  generateScheduleCancellationMessage(
+    participantName: string,
+    bandName: string,
+    scheduleName: string,
+    date: string,
+  ): string {
+    const formattedDate = this.formatDate(date);
+
+    return `❌ *Escala Cancelada - Grupo: ${bandName}*
+
+Olá, ${participantName}! 👋
+
+A escala a seguir foi *cancelada*:
+
+➡️ *Escala:* ${scheduleName} \n
+🗓️ *Data:* ${formattedDate}
+
+Entre em contato com o líder da banda para mais informações.
+
+_Mensagem enviada automaticamente pelo sistema de escalas._`;
+  }
+
+  /**
+   * Gera mensagem de alteração de escala
+   */
+  generateScheduleUpdateMessage(
+    participantName: string,
+    bandName: string,
+    scheduleName: string,
+    date: string,
+    time?: string,
+    changes?: string,
+  ): string {
+    const formattedDate = this.formatDate(date);
+    const formattedTime = time ? ` às ${this.formatTime(time)}` : "";
+    const changesText = changes ? `\n\n📝 *Alterações:*\n${changes}` : "";
+
+    return `🔄 *Escala Atualizada - Grupo: ${bandName}*
+
+Olá, ${participantName}! 👋
+
+A escala foi *atualizada*:
+
+➡️ *Escala:* ${scheduleName} \n
+🗓️ *Data:* ${formattedDate}${formattedTime}${changesText}
+
+Por favor, verifique as alterações.
+
+_Mensagem enviada automaticamente pelo sistema de escalas._`;
+  }
+
+  /**
+   * Envia notificação de escala para um participante
+   */
+  async sendScheduleNotification(
+    whatsapp: string,
+    participantName: string,
+    bandName: string,
+    scheduleName: string,
+    date: string,
+    time?: string,
+    instrument?: string,
+  ): Promise<WhatsAppNotificationResult> {
+    try {
+      const message = this.generateScheduleNotificationMessage(
+        participantName,
+        bandName,
+        scheduleName,
+        date,
+        time,
+        instrument,
+      );
+
+      const response = await evolutionAPI.sendText({
+        number: whatsapp,
+        text: message,
+      });
+
+      return {
+        userId: "",
+        success: true,
+        messageId: response.key.id,
+      };
+    } catch (error) {
+      return {
+        userId: "",
+        success: false,
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      };
+    }
+  }
+
+  /**
+   * Envia notificações para todos os participantes de uma escala
+   */
+  async sendScheduleNotifications(
+    payload: ScheduleNotificationPayload,
+  ): Promise<WhatsAppNotificationResult[]> {
+    const results: WhatsAppNotificationResult[] = [];
+
+    for (const participant of payload.participants) {
+      if (!participant.whatsapp) {
+        results.push({
+          userId: participant.userId,
+          success: false,
+          error: "Número de WhatsApp não cadastrado",
+        });
+        continue;
+      }
+
+      try {
+        const message = this.generateScheduleNotificationMessage(
+          participant.name,
+          payload.bandName,
+          payload.scheduleName,
+          payload.date,
+          payload.time,
+          participant.instrument,
+        );
+
+        const response = await evolutionAPI.sendText({
+          number: participant.whatsapp,
+          text: message,
+        });
+
+        results.push({
+          userId: participant.userId,
+          success: true,
+          messageId: response.key.id,
+        });
+
+        // Aguarda um pouco entre mensagens para evitar rate limiting
+        await this.delay(1500);
+      } catch (error) {
+        results.push({
+          userId: participant.userId,
+          success: false,
+          error: error instanceof Error ? error.message : "Erro desconhecido",
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Envia lembrete de escala para todos os participantes
+   */
+  async sendScheduleReminders(
+    payload: ScheduleNotificationPayload,
+  ): Promise<WhatsAppNotificationResult[]> {
+    const results: WhatsAppNotificationResult[] = [];
+
+    for (const participant of payload.participants) {
+      if (!participant.whatsapp) {
+        results.push({
+          userId: participant.userId,
+          success: false,
+          error: "Número de WhatsApp não cadastrado",
+        });
+        continue;
+      }
+
+      try {
+        const message = this.generateScheduleReminderMessage(
+          participant.name,
+          payload.bandName,
+          payload.scheduleName,
+          payload.date,
+          payload.time,
+          participant.instrument,
+        );
+
+        const response = await evolutionAPI.sendText({
+          number: participant.whatsapp,
+          text: message,
+        });
+
+        results.push({
+          userId: participant.userId,
+          success: true,
+          messageId: response.key.id,
+        });
+
+        await this.delay(1500);
+      } catch (error) {
+        results.push({
+          userId: participant.userId,
+          success: false,
+          error: error instanceof Error ? error.message : "Erro desconhecido",
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Envia mensagem de texto simples
+   */
+  async sendMessage(
+    whatsapp: string,
+    message: string,
+  ): Promise<{ success: boolean; messageId?: string; error?: string }> {
+    try {
+      const response = await evolutionAPI.sendText({
+        number: whatsapp,
+        text: message,
+      });
+
+      return {
+        success: true,
+        messageId: response.key.id,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      };
+    }
+  }
+
+  /**
+   * Verifica se o WhatsApp está conectado
+   */
+  async isConnected(): Promise<boolean> {
+    return evolutionAPI.isConnected();
+  }
+
+  /**
+   * Obtém QR Code para conexão
+   */
+  async getQRCode() {
+    return evolutionAPI.getQRCode();
+  }
+
+  /**
+   * Obtém estado da conexão
+   */
+  async getConnectionState() {
+    return evolutionAPI.getConnectionState();
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+}
+
+export const whatsappService = new WhatsAppService();
