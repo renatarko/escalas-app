@@ -23,12 +23,10 @@ import {
 import { useTabsStore } from "@/stores/use-tabs-store";
 import { api } from "@/trpc/react";
 import { Music2, Settings } from "lucide-react";
-import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function DashboardHome() {
-  const { data: session } = useSession();
   const { membership } = getCurrentMembership();
   const { data: bands, isPending } = api.band.getBands.useQuery();
 
@@ -117,12 +115,12 @@ export default function DashboardHome() {
                       : "Ver detalhes"}
                   </Button>
 
-                  {!!session?.user && (
+                  {!!membership && (
                     <Badge variant="secondary">
                       {
                         memberRoleLabel[
                           band.members.find(
-                            (member) => member.userId === session.user.id,
+                            (member) => member.userId === membership?.id,
                           )?.role ?? "ADMIN"
                         ]
                       }

@@ -83,7 +83,7 @@ export function TabsContainer() {
           <Calendar /> Minhas Escalas
         </TabsTrigger>
 
-        {member && member.role !== "MEMBER" && (
+        {membership && membership.role !== "MEMBER" && (
           <TabsTrigger
             className="h-full w-full rounded-none"
             value="create-scales"
@@ -92,7 +92,7 @@ export function TabsContainer() {
           </TabsTrigger>
         )}
 
-        {member && member.role !== "MEMBER" && (
+        {membership && membership.role !== "MEMBER" && (
           <TabsTrigger
             className="h-full w-full rounded-none"
             value="participants"
@@ -102,7 +102,7 @@ export function TabsContainer() {
           </TabsTrigger>
         )}
 
-        {member && member.role !== "MEMBER" && (
+        {membership && membership.role !== "MEMBER" && (
           <TabsTrigger
             className="h-full w-full rounded-none"
             value="invitations"
