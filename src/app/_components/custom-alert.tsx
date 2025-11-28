@@ -32,7 +32,7 @@ export const AlertCustom = ({
 }: AlertCustomProps) => {
   return (
     <AlertDialog open={open}>
-      <AlertDialogTrigger />
+      <AlertDialogTrigger className="hidden" />
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
