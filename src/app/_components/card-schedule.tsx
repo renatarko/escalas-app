@@ -43,7 +43,7 @@ const MenuOptions = ({ schedule }: MenuOptionsProps) => {
 
   const router = useRouter();
 
-  const [modals, setModals] = useState({ delete: false });
+  const [modals, setModals] = useState({ delete: false, notifyAll: false });
 
   const utils = api.useUtils().schedule.list;
 
@@ -53,6 +53,9 @@ const MenuOptions = ({ schedule }: MenuOptionsProps) => {
         await utils.invalidate();
       },
     });
+
+  const { mutateAsync: sendNotification, isPending: isSendingNotification } =
+    api.whatsapp.sendScheduleNotification.useMutation();
 
   const handleDelete = async () => {
     try {
@@ -66,6 +69,16 @@ const MenuOptions = ({ schedule }: MenuOptionsProps) => {
 
   const handleEdit = () => {
     router.push(`/admin/schedule/${schedule.id}`);
+  };
+
+  const handleNotifyAll = async () => {
+    try {
+      await sendNotification({ scheduleId: id, type: "notification" });
+      toast.success("Integrantes notificados com sucesso");
+    } catch (error) {
+      console.log(error);
+      toast.error("Ops, houve um erro ao enviar as notificações");
+    }
   };
 
   return (
@@ -91,14 +104,17 @@ const MenuOptions = ({ schedule }: MenuOptionsProps) => {
             <Check />
             Confirmar
           </DropdownMenuItem>
-          <DropdownMenuItem disabled>
+          <DropdownMenuItem
+            disabled={isSendingNotification}
+            onClick={() => setModals({ ...modals, notifyAll: true })}
+          >
             <Send />
-            Notificar
+            Notificar Integrantes
           </DropdownMenuItem>
           <DropdownMenuItem
             disabled={isPending}
             variant="destructive"
-            onClick={() => setModals({ delete: true })}
+            onClick={() => setModals({ ...modals, delete: true })}
           >
             <Trash />
             Excluir
@@ -108,9 +124,20 @@ const MenuOptions = ({ schedule }: MenuOptionsProps) => {
 
       <AlertCustom
         open={modals.delete}
-        setOpen={(value) => setModals({ delete: value })}
+        setOpen={(value) => setModals({ ...modals, delete: value })}
         handleConfirm={handleDelete}
         disabled={isPending}
+      />
+      <AlertCustom
+        open={modals.notifyAll}
+        setOpen={(value) => setModals({ ...modals, notifyAll: value })}
+        handleConfirm={handleNotifyAll}
+        disabled={isSendingNotification}
+        loading={isSendingNotification}
+        title="Enviar notificações?"
+        description={
+          "Essa ação enviará uma mensagem via WhatsApp para todos os integrantes desta escala. Deseja continuar?"
+        }
       />
     </>
   );
@@ -134,6 +161,49 @@ type CardListScheduleProps = {
     createdBy: { name: string | null };
     participants: Participant[];
   };
+};
+
+const ParticipantNotifyButton = ({
+  scheduleId,
+  participantId,
+  hasWhatsapp,
+}: {
+  scheduleId: string;
+  participantId: string;
+  hasWhatsapp: boolean;
+}) => {
+  const { mutateAsync: sendNotification, isPending } =
+    api.whatsapp.sendParticipantNotification.useMutation();
+
+  const handleNotify = async () => {
+    try {
+      await sendNotification({ scheduleId, participantId });
+      toast.success("Notificação enviada com sucesso");
+    } catch (error) {
+      console.log(error);
+      toast.error("Erro ao enviar notificação");
+    }
+  };
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          onClick={handleNotify}
+          disabled={isPending || !hasWhatsapp}
+        >
+          <Send className="size-4 text-green-600" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        {hasWhatsapp
+          ? "Enviar notificação via WhatsApp"
+          : "WhatsApp não cadastrado"}
+      </TooltipContent>
+    </Tooltip>
+  );
 };
 
 export const CardSchedule = ({ schedule }: CardListScheduleProps) => {
@@ -215,9 +285,11 @@ export const CardSchedule = ({ schedule }: CardListScheduleProps) => {
               </Badge>
 
               {isUserAdmin && !participant.confirmed && (
-                <Button variant="outline" size="icon-sm">
-                  <Send className="size-4 text-green-600" />
-                </Button>
+                <ParticipantNotifyButton
+                  scheduleId={schedule.id}
+                  participantId={participant.id}
+                  hasWhatsapp={!!participant.whatsapp}
+                />
               )}
             </div>
           </div>
