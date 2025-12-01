@@ -16,7 +16,7 @@ export const ListScheduleParticipant = () => {
   const { bandName } = useFindCurrentBandId();
 
   const [viewMode, setViewMode] = useState(() => {
-    const saved = localStorage.getItem("scheduleViewMode");
+    const saved = localStorage.getItem("scheduleViewModeOwnScales");
     return saved ?? "cards";
   });
 
@@ -26,7 +26,7 @@ export const ListScheduleParticipant = () => {
   );
 
   useEffect(() => {
-    localStorage.setItem("scheduleViewMode", viewMode);
+    localStorage.setItem("scheduleViewModeOwnScales", viewMode);
   }, [viewMode]);
 
   if (isPending) {

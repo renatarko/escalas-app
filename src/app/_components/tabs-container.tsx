@@ -26,12 +26,12 @@ export function TabsContainer() {
 
   const renderTabsContent = React.useMemo(() => {
     switch (tab) {
-      case "my-scales":
-        return (
-          <TabsContentCustom title="Minhas Escalas">
-            <ListScheduleParticipant />
-          </TabsContentCustom>
-        );
+      // case "my-scales":
+      //   return (
+      //     <TabsContentCustom title="Minhas Escalas">
+      //       <ListScheduleParticipant />
+      //     </TabsContentCustom>
+      //   );
       case "scales":
         return (
           <TabsContentCustom title="Gerenciar Escalas">
@@ -79,9 +79,9 @@ export function TabsContainer() {
           <CalendarDays /> Escalas
         </TabsTrigger>
 
-        <TabsTrigger className="h-full w-full rounded-none" value="my-scales">
+        {/* <TabsTrigger className="h-full w-full rounded-none" value="my-scales">
           <Calendar /> Minhas Escalas
-        </TabsTrigger>
+        </TabsTrigger> */}
 
         {membership && membership.role !== "MEMBER" && (
           <TabsTrigger
