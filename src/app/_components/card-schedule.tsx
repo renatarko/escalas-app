@@ -167,6 +167,7 @@ type CardListScheduleProps = {
     createdBy: { name: string | null };
     participants: Participant[];
   };
+  isOwnSchedule: boolean;
 };
 
 export const CardSchedule = ({ schedule }: CardListScheduleProps) => {
@@ -182,6 +183,8 @@ export const CardSchedule = ({ schedule }: CardListScheduleProps) => {
     const total = members.length;
     return { confirmed, total, pending: total - confirmed };
   }, [schedule]);
+
+  const isExpanded = expandedCard === schedule.id;
 
   return (
     <Card className="p-0">
@@ -252,6 +255,17 @@ export const CardSchedule = ({ schedule }: CardListScheduleProps) => {
             })}
           </div>
         </div>
+
+        {!isExpanded && schedule.participants.length > 3 && (
+          <div className="mt-3 text-center">
+            <button
+              onClick={() => setExpandedCard(schedule.id)}
+              className="text-primary hover:text-primary/70 text-sm font-medium"
+            >
+              Ver todos os {schedule.participants.length} integrantes
+            </button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -85,8 +85,8 @@ export const CardMemberSchedule = ({
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="mb-0.5 flex flex-col gap-2 sm:flex-row sm:items-center">
-          <h3 className="truncate text-sm font-medium">{name}</h3>
+        <div className="mb-0.5 flex items-center gap-2">
+          <h3 className="font-medium">{name}</h3>
           {confirmed && (
             <Badge
               variant="secondary"
@@ -115,14 +115,14 @@ export const CardMemberSchedule = ({
             </Badge>
           )}
         </div>
-        <div className="text-muted-foreground flex flex-col gap-2 text-xs sm:flex-row sm:items-center">
+        <div className="text-muted-foreground flex gap-2 text-xs">
           <span>
             {SetInstrument(instrument as Instrument).icon}
             <span className="ml-1">
               {SetInstrument(instrument as Instrument).label}
             </span>
           </span>
-          <span className="hidden sm:block">•</span>
+          <span>•</span>
           <span>{whatsapp}</span>
         </div>
       </div>
