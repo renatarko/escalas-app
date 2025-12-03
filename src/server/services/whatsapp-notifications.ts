@@ -4,6 +4,7 @@ import { SetInstrument } from "@/lib/utils/setInstrument";
 import type { Instrument } from "@/lib/types";
 import type {
   ScheduleNotificationPayload,
+  ScheduleParticipantNotificationPayload,
   WhatsAppNotificationResult,
 } from "@/lib/whatsapp";
 
@@ -78,6 +79,7 @@ export async function processScheduleNotifications({
     date: new Date(schedule.date).toISOString(),
     time: schedule.time ? new Date(schedule.time).toISOString() : undefined,
     participants: participantsWithWhatsapp.map((participant) => ({
+      scheduleParticipantId: participant.scheduleParticipantId,
       userId: participant.participantId,
       name: participant.name,
       whatsapp: participant.whatsapp,
@@ -120,4 +122,58 @@ export async function processScheduleNotifications({
     failed: failCount,
     details: results,
   };
+}
+
+type ProcessScheduleAndParticipantNotificationsParams = {
+  scheduleParticipant: string;
+};
+
+export async function processScheduleAndParticipantNotifications({
+  scheduleParticipant,
+}: ProcessScheduleAndParticipantNotificationsParams): Promise<ScheduleParticipantNotificationPayload> {
+  const scheduleByParticipant = await db.scheduleParticipant.findUnique({
+    where: { id: scheduleParticipant },
+    select: {
+      participant: {
+        select: {
+          id: true,
+          name: true,
+          whatsapp: true,
+        },
+      },
+      confirmed: true,
+      instrument: true,
+      justification: true,
+      schedule: {
+        select: {
+          id: true,
+          name: true,
+          date: true,
+        },
+      },
+    },
+  });
+
+  if (!scheduleByParticipant) {
+    throw new Error(`Schedule not found: ${scheduleByParticipant}`);
+  }
+
+  const payload: ScheduleParticipantNotificationPayload = {
+    schedule: {
+      id: scheduleByParticipant.schedule.id,
+      name: scheduleByParticipant.schedule.name ?? "",
+      date: scheduleByParticipant.schedule.date,
+    },
+    member: {
+      id: scheduleByParticipant.participant.id,
+      name: scheduleByParticipant.participant.name ?? "",
+      whatsapp: scheduleByParticipant.participant.whatsapp ?? "",
+      confirmed: scheduleByParticipant.confirmed,
+      instrument:
+        SetInstrument(scheduleByParticipant.instrument as Instrument).label ??
+        "",
+    },
+  };
+
+  return payload;
 }

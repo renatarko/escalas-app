@@ -5,6 +5,7 @@ import {
   sendScheduleNotification,
   sendScheduleReminder,
   scheduledReminders,
+  sendNotificationN8N,
 } from "@/inngest/functions";
 
 export const { GET, POST, PUT } = serve({
@@ -14,5 +15,6 @@ export const { GET, POST, PUT } = serve({
     sendScheduleNotification,
     sendScheduleReminder,
     scheduledReminders,
+    sendNotificationN8N,
   ],
 });
