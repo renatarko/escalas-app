@@ -71,11 +71,27 @@ export interface ScheduleNotificationPayload {
   date: string;
   time?: string;
   participants: {
+    scheduleParticipantId: string;
     userId: string;
     name: string;
     whatsapp: string;
     instrument: string;
   }[];
+}
+
+export interface ScheduleParticipantNotificationPayload {
+  schedule: {
+    id: string;
+    date: Date;
+    name: string;
+  };
+  member: {
+    id: string;
+    name: string;
+    whatsapp: string;
+    instrument: string;
+    confirmed: boolean | null;
+  };
 }
 
 export interface WhatsAppNotificationResult {

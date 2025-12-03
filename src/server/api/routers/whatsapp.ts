@@ -215,15 +215,16 @@ export const whatsappRouter = createTRPCRouter({
       }
 
       try {
-        const result = await whatsappService.sendScheduleNotification(
-          participant.participant.whatsapp,
-          participant.participant.name ?? "Participante",
-          schedule.band.name,
-          schedule.name ?? "Escala",
-          schedule.date.toISOString(),
-          schedule.time?.toISOString(),
-          participant.instrument,
-        );
+        const result = await whatsappService.sendScheduleNotification({
+          whatsapp: participant.participant.whatsapp,
+          participantName: participant.participant.name ?? "Participante",
+          bandName: schedule.band.name,
+          scheduleName: schedule.name ?? "Escala",
+          date: schedule.date.toISOString(),
+          time: schedule.time?.toISOString(),
+          instrument: participant.instrument,
+          scheduleParticipantId: participant.id,
+        });
 
         if (result.success) {
           await ctx.db.scheduleParticipant.update({

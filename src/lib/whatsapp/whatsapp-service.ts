@@ -42,6 +42,7 @@ class WhatsAppService {
     date: string,
     time?: string,
     instrument?: string,
+    scheduleParticipantId?: string,
   ): string {
     const formattedDate = this.formatDate(date);
     const formattedTime = time ? ` às ${this.formatTime(time)}` : "";
@@ -49,6 +50,16 @@ class WhatsAppService {
       SetInstrument(instrument as Instrument).label ??
       instrument ??
       "Instrumento não cadastrado";
+
+    const confirmationInstructions = scheduleParticipantId
+      ? `\n\n📝 *Para confirmar sua presença, responda:*
+✅ *SIM* ou *CONFIRMO* ou *VOU*
+
+❌ *Para recusar, responda:*
+*NÃO* ou *NÃO VOU* ou *RECUSO*
+
+_Responda esta mensagem com sua confirmação._`
+      : `\n\nPor favor, confirme sua presença o mais breve possível.`;
 
     return `🎵 *Nova Escala - Grupo: ${bandName}*
 
@@ -58,9 +69,7 @@ Você foi escalado(a) para:
 
  ➡️ *Escala:* ${scheduleName} \n
  🗓️ *Data:* ${formattedDate}${formattedTime} \n
- 🎸 *Instrumento:* ${instrumentText}
-
-Por favor, confirme sua presença o mais breve possível.
+ 🎸 *Instrumento:* ${instrumentText}${confirmationInstructions}
 
 _Mensagem enviada automaticamente pelo sistema de escalas._`;
   }
@@ -155,27 +164,29 @@ _Mensagem enviada automaticamente pelo sistema de escalas._`;
   /**
    * Envia notificação de escala para um participante
    */
-  async sendScheduleNotification(
-    whatsapp: string,
-    participantName: string,
-    bandName: string,
-    scheduleName: string,
-    date: string,
-    time?: string,
-    instrument?: string,
-  ): Promise<WhatsAppNotificationResult> {
+  async sendScheduleNotification(params: {
+    whatsapp: string;
+    participantName: string;
+    bandName: string;
+    scheduleName: string;
+    date: string;
+    time?: string;
+    instrument?: string;
+    scheduleParticipantId?: string;
+  }): Promise<WhatsAppNotificationResult> {
     try {
       const message = this.generateScheduleNotificationMessage(
-        participantName,
-        bandName,
-        scheduleName,
-        date,
-        time,
-        instrument,
+        params.participantName,
+        params.bandName,
+        params.scheduleName,
+        params.date,
+        params.time,
+        params.instrument,
+        params.scheduleParticipantId,
       );
 
       const response = await evolutionAPI.sendText({
-        number: whatsapp,
+        number: params.whatsapp,
         text: message,
       });
 
@@ -212,6 +223,10 @@ _Mensagem enviada automaticamente pelo sistema de escalas._`;
       }
 
       try {
+        const scheduleParticipantId: string | undefined =
+          "scheduleParticipantId" in participant
+            ? participant.scheduleParticipantId
+            : undefined;
         const message = this.generateScheduleNotificationMessage(
           participant.name,
           payload.bandName,
@@ -219,6 +234,7 @@ _Mensagem enviada automaticamente pelo sistema de escalas._`;
           payload.date,
           payload.time,
           participant.instrument,
+          scheduleParticipantId,
         );
 
         const response = await evolutionAPI.sendText({
