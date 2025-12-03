@@ -12,7 +12,6 @@ export const expireAwaitingPendingConfirmations = inngest.createFunction(
   async ({ step }) => {
     const now = new Date();
 
-    // 1. Buscar pendingConfirmations expiradas e que ainda aguardam resposta
     const expiredAwaiting = await step.run(
       "fetch-expired-awaiting",
       async () => {
@@ -37,11 +36,9 @@ export const expireAwaitingPendingConfirmations = inngest.createFunction(
 
     const results = [];
 
-    // 2. Processar cada uma
     for (const item of expiredAwaiting) {
       const result = await step.run(`expire-${item.id}`, async () => {
         try {
-          // Marcar como expirado
           await db.pendingConfirmation.update({
             where: { id: item.id },
             data: { status: "expired" },
@@ -112,13 +109,6 @@ export const cleanupExpiredOrCompletedPendingConfirmations =
       for (const item of expired) {
         const result = await step.run(`process-${item.id}`, async () => {
           try {
-            // Aqui você pode fazer qualquer ação:
-            // - remover do banco
-            // - marcar como "expired"
-            // - enviar para outro fluxo
-            // - notificar admin
-            // etc.
-
             await db.pendingConfirmation.delete({
               where: { id: item.id },
             });
