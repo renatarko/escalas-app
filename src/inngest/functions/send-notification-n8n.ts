@@ -1,32 +1,8 @@
-// Tipos para melhor type safety
-type ScheduleNotificationPayload = {
-  evolution: {
-    instance: string;
-    serverUrl: string;
-    apikey: string;
-  };
-  app: {
-    webhookUrl: string;
-    xApiKey: string;
-  };
-  schedule: {
-    id: string;
-    date: string;
-    name: string;
-  };
-  member: {
-    id: string;
-    name: string;
-    whatsapp: string;
-    instrument: string | null;
-    confirmed: boolean | null;
-  };
-};
-
 import { processScheduleAndParticipantNotifications } from "@/server/services/whatsapp-notifications";
 import { inngest } from "../client";
 import { env } from "@/env";
 import { NonRetriableError } from "inngest";
+import type { ScheduleNotificationPayload } from "./types";
 
 export const sendNotificationN8N = inngest.createFunction(
   {
@@ -40,24 +16,6 @@ export const sendNotificationN8N = inngest.createFunction(
       scheduleParticipant: string;
     };
 
-    console.log({ scheduleParticipant });
-
-    // const scheduleByParticipantInfo =
-    //   await processScheduleAndParticipantNotifications({ scheduleParticipant });
-    // const payload = {
-    //   evolution: {
-    //     instance: env.EVOLUTION_INSTANCE_NAME,
-    //     serverUrl: "https://devrenata-evo.ultrahook.com", // substituir vindo da igreja
-    //     apikey: "24A564EB-E735-4CF9-8EDB-0D02E6086BE9", // substituuir vindo da igreja
-    //   },
-    //   app: {
-    //     webhookUrl: "https://285d9429d363.ngrok-free.app",
-    //     xApiKey: env.EVOLUTION_API_KEY,
-    //   },
-    //   ...scheduleByParticipantInfo,
-    // };
-
-    // Step 1: Buscar dados do participante e escala
     const scheduleByParticipantInfo = await step.run(
       "fetch-schedule-participant-info",
       async () => {
@@ -85,7 +43,6 @@ export const sendNotificationN8N = inngest.createFunction(
       },
     );
 
-    // Step 2: Preparar payload
     const payload: ScheduleNotificationPayload = await step.run(
       "prepare-payload",
       async () => {
@@ -110,7 +67,6 @@ export const sendNotificationN8N = inngest.createFunction(
       },
     );
 
-    // Step 3: Salvar sessão pendente
     await step.run("save-pending-confirmation", async () => {
       try {
         const response = await fetch(
@@ -143,7 +99,6 @@ export const sendNotificationN8N = inngest.createFunction(
       }
     });
 
-    // Step 4: Chamar webhook do N8N
     const n8nResponse = await step.run("call-n8n-webhook", async () => {
       try {
         const n8nUrl = env.N8N_BASE_URL.endsWith("/")
@@ -156,7 +111,7 @@ export const sendNotificationN8N = inngest.createFunction(
             "Content-Type": "application/json",
             "x-api-key": env.EVOLUTION_API_KEY,
           },
-          body: JSON.stringify(payload), // Envia payload direto, não dentro de outro objeto
+          body: JSON.stringify(payload),
         });
 
         if (!response.ok) {
@@ -175,9 +130,7 @@ export const sendNotificationN8N = inngest.createFunction(
       }
     });
 
-    // Step 5: Log de auditoria (opcional)
     await step.run("log-notification-sent", async () => {
-      // Opcional: salvar log de que a notificação foi enviada
       console.log("Notificação enviada com sucesso:", {
         scheduleParticipant,
         scheduleId: payload.schedule.id,
