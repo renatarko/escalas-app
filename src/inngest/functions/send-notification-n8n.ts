@@ -59,7 +59,7 @@ export const sendNotificationN8N = inngest.createFunction(
             apikey: "DB678B3D5F36-47D6-BC95-C7FD516D0140", // TODO: usar band.evolutionApiKey
           },
           app: {
-            webhookUrl: "https://285d9429d363.ngrok-free.app",
+            webhookUrl: env.NEXT_PUBLIC_API_URL,
             xApiKey: env.EVOLUTION_API_KEY,
           },
           ...scheduleByParticipantInfo,
@@ -70,7 +70,7 @@ export const sendNotificationN8N = inngest.createFunction(
     await step.run("save-pending-confirmation", async () => {
       try {
         const response = await fetch(
-          `${env.NEXTAUTH_URL}/api/whatsapp/save-pending-confirmation`,
+          `${env.NEXT_PUBLIC_API_URL}/api/whatsapp/save-pending-confirmation`,
           {
             method: "POST",
             headers: {
