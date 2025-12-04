@@ -106,7 +106,13 @@ export async function POST(request: Request) {
     //   }
     // }
 
-    if (new Date(scheduleParticipant.schedule.date) < new Date()) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const scheduleDate = new Date(scheduleParticipant.schedule.date);
+    scheduleDate.setHours(0, 0, 0, 0);
+
+    if (scheduleDate < today) {
       console.log("Escala já passou");
       return NextResponse.json(
         { message: "Não foi possível atualizar o status. A escala já passou" },

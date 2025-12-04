@@ -77,7 +77,7 @@ const MenuOptions = ({ schedule }: MenuOptionsProps) => {
 
   const handleNotifyAll = async () => {
     try {
-      await sendNotification({ scheduleId: id, type: "notification" });
+      await sendNotification({ scheduleId: schedule.id });
       toast.success("Integrantes notificados com sucesso");
     } catch (error) {
       console.log(error);
