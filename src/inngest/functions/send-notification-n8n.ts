@@ -126,6 +126,11 @@ export const sendNotificationN8N = inngest.createFunction(
         }
 
         const result = await response.json();
+        await db.scheduleParticipant.update({
+          where: { id: scheduleParticipant },
+          data: { notificationSent: true, notificationSentAt: new Date() },
+        });
+
         console.log("N8N webhook success:", result);
         return result;
       } catch (error) {

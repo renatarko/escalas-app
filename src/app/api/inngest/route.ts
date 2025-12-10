@@ -8,7 +8,7 @@ import {
   sendNotificationN8N,
   sendBatchNotificationN8N,
   expireAwaitingPendingConfirmations,
-  cleanupExpiredOrCompletedPendingConfirmations,
+  // cleanupExpiredOrCompletedPendingConfirmations,
 } from "@/inngest/functions";
 
 export const { GET, POST, PUT } = serve({
@@ -21,6 +21,6 @@ export const { GET, POST, PUT } = serve({
     sendNotificationN8N,
     sendBatchNotificationN8N,
     expireAwaitingPendingConfirmations,
-    cleanupExpiredOrCompletedPendingConfirmations,
+    // cleanupExpiredOrCompletedPendingConfirmations,
   ],
 });

@@ -1,11 +1,9 @@
-import { Button } from "@/app/_components/ui/button";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/app/_components/ui/card";
-import { Unauthorized } from "@/app/_components/unauthorized";
 import { api } from "@/trpc/server";
 import { Ban, Calendar, CheckCircle2, Users } from "lucide-react";
 
@@ -107,64 +105,6 @@ export default async function ConfirmationPage({ params }: Params) {
     console.log(error);
     return <ErrorState />;
   }
-  // return (
-  //   <div className="from-card to-primary/10 flex min-h-screen items-center justify-center bg-linear-to-br p-4">
-  //     <Card className="shadow-2xl">
-  //       <CardHeader className="items-center">
-  //         <div className="bg-primary/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-  //           <Calendar className="text-primary h-6 w-6" />
-  //         </div>
-  //         <CardTitle className="text-center text-xl">
-  //           Confirme sua Presença
-  //         </CardTitle>
-  //         <CardDescription className="text-center">
-  //           Escala: {pendingConfirmation?.schedule.name}
-  //         </CardDescription>
-  //       </CardHeader>
-  //       <CardContent>
-  //         <CardAction className="w-full">
-  //           <Button variant="outline">Não vou poder</Button>
-  //           <Button className="sm:ml-4">Sim, confirmado</Button>
-  //         </CardAction>
-  //       </CardContent>
-  //       <CardFooter className="w-full">
-  //         <p className="mt-6 w-full text-center text-xs text-gray-500">
-  //           Organizado por {pendingConfirmation?.schedule.band.name}
-  //         </p>
-  //       </CardFooter>
-  //     </Card>
-  //     {/* <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
-  //       <div className="mb-8 text-center">
-  //         <div className="bg-primary/10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-  //           <Calendar className="text-primary h-8 w-8" />
-  //         </div>
-  //         <h1 className="mb-2 text-lg font-bold">Confirme sua Presença</h1>
-  //         <p className="text-muted-foreground">
-  //           {pendingConfirmation?.schedule.name}
-  //         </p>
-  //       </div>
-
-  //       <div className="ga-4 flex w-full items-center">
-  //         <Button
-  //           variant="outline"
-  //           // className="w-full rounded-lg py-3 font-semibold  transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-400"
-  //         >
-  //           Não vou poder
-  //         </Button>
-
-  //         <Button
-  //         // className="w-full rounded-lg py-3 font-semibold  transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-400"
-  //         >
-  //           Sim, confirmado
-  //         </Button>
-  //       </div>
-
-  //       <p className="mt-6 text-center text-xs text-gray-500">
-  //         Organizado por {pendingConfirmation?.schedule.band.name}
-  //       </p>
-  //     </div> */}
-  //   </div>
-  // );
 }
 
 function AlreadyResponded({
@@ -191,7 +131,11 @@ function AlreadyResponded({
   );
 }
 
-function ErrorState() {
+function ErrorState({
+  description = "O link pode estar expirado ou inválido. Tente novamente ou entre em contato com o administrador da escala.",
+}: {
+  description?: string;
+}) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-red-50 p-4">
       <Card className="w-full max-w-md border-red-200">
@@ -202,10 +146,7 @@ function ErrorState() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="leading-6">
-            O link pode estar expirado ou inválido. Tente novamente ou entre em
-            contato com o administrador da escala.
-          </p>
+          <p className="leading-6">{description}</p>
         </CardContent>
       </Card>
     </div>
