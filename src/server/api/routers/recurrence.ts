@@ -163,25 +163,85 @@ export const recurrenceRouter = createTRPCRouter({
         timeDate.setHours(hours, minutes, 0, 0);
       }
 
-      // Atualiza a configuração principal
-      const updatedRecurrence = await ctx.db.recurrenceConfig.update({
-        where: { id, bandId },
-        data: {
-          frequency,
-          dayOfWeek,
-          weekOfMonth,
-          startDate,
-          endDate,
-          time: new Date(),
-          notes,
-          participants: {
-            deleteMany: {},
-            create: participants.map((p) => ({
+      const newStartDate = new Date(startDate);
+      const newEndDate = new Date(endDate);
+      newStartDate.setUTCHours(0, 0, 0, 0);
+      newEndDate.setUTCHours(0, 0, 0, 0);
+
+      const updatedRecurrence = await ctx.db.$transaction(async (tx) => {
+        const existingParticipants = await tx.recurrenceParticipant.findMany({
+          where: { recurrenceConfigId: id },
+        });
+
+        const incomingByUser = new Map(
+          participants.map((p) => [p.participantId, p]),
+        );
+
+        const toCreate = participants.filter(
+          (p) =>
+            !existingParticipants.some(
+              (ep) => ep.participantId === p.participantId,
+            ),
+        );
+
+        const toUpdate = existingParticipants.filter((ep) => {
+          const incoming = incomingByUser.get(ep.participantId);
+          return incoming && incoming.instrument !== ep.instrument;
+        });
+
+        const toDelete = existingParticipants.filter(
+          (ep) => !incomingByUser.has(ep.participantId),
+        );
+
+        const recurrence = await tx.recurrenceConfig.update({
+          where: { id, bandId },
+          data: {
+            frequency,
+            dayOfWeek,
+            weekOfMonth,
+            startDate: newStartDate,
+            endDate: newEndDate,
+            time: timeDate,
+            notes,
+          },
+        });
+
+        for (const participant of toUpdate) {
+          const incoming = incomingByUser.get(participant.participantId);
+          if (!incoming) continue;
+          await tx.recurrenceParticipant.update({
+            where: {
+              recurrenceConfigId_participantId: {
+                recurrenceConfigId: id,
+                participantId: participant.participantId,
+              },
+            },
+            data: { instrument: incoming.instrument },
+          });
+        }
+
+        if (toCreate.length > 0) {
+          await tx.recurrenceParticipant.createMany({
+            data: toCreate.map((p) => ({
+              recurrenceConfigId: id,
               participantId: p.participantId,
               instrument: p.instrument,
             })),
-          },
-        },
+          });
+        }
+
+        if (toDelete.length > 0) {
+          await tx.recurrenceParticipant.deleteMany({
+            where: {
+              recurrenceConfigId: id,
+              participantId: {
+                in: toDelete.map((p) => p.participantId),
+              },
+            },
+          });
+        }
+
+        return recurrence;
       });
 
       // Deleta escalas futuras (mantém histórico passado)
@@ -209,7 +269,7 @@ export const recurrenceRouter = createTRPCRouter({
               bandId,
               name,
               date,
-              time: new Date(),
+              time: timeDate,
               notes,
               recurrenceType: "RECURRING",
               recurrenceGroupId: id,
