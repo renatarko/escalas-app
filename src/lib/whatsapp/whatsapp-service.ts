@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import type { Instrument } from "../types";
 import { SetInstrument } from "../utils/setInstrument";
 import { evolutionAPI } from "./evolution-api";
@@ -5,6 +6,47 @@ import type {
   ScheduleNotificationPayload,
   WhatsAppNotificationResult,
 } from "./types";
+import { env } from "@/env";
+
+type generateMessage = {
+  participantName: string;
+  bandName: string;
+  scheduleName: string;
+  date: string;
+  instrument?: string;
+  scheduleParticipantId?: string;
+  pendingConfirmationId: string;
+};
+
+export const generateScheduleNotificationMessage = ({
+  participantName,
+  // bandName,
+  scheduleName,
+  date,
+  instrument,
+  scheduleParticipantId,
+  pendingConfirmationId,
+}: generateMessage): string => {
+  const formattedDate = format(date, "dd/MM/yyyy");
+  const instrumentText =
+    SetInstrument(instrument as Instrument).label ??
+    instrument ??
+    "Instrumento não cadastrado";
+
+  const confirmationInstructions =
+    scheduleParticipantId &&
+    `✅ Para confirmar sua presença, clique: 
+${env.NEXT_PUBLIC_API_URL}/confirmation/${pendingConfirmationId}
+
+_Aguardamos sua confirmação._`;
+
+  return `Olá, ${participantName}! 👋
+
+Você foi escalado(a) para escala *${scheduleName}*
+🗓️ ${formattedDate}
+🎸 ${instrumentText} \n
+${confirmationInstructions}`;
+};
 
 class WhatsAppService {
   /**
@@ -52,7 +94,7 @@ class WhatsAppService {
       "Instrumento não cadastrado";
 
     const confirmationInstructions = scheduleParticipantId
-      ? `\n\n📝 *Para confirmar sua presença, responda:*
+      ? `\n\n*Para confirmar sua presença, responda:*
 ✅ *SIM* ou *CONFIRMO* ou *VOU*
 
 ❌ *Para recusar, responda:*
@@ -61,17 +103,12 @@ class WhatsAppService {
 _Responda esta mensagem com sua confirmação._`
       : `\n\nPor favor, confirme sua presença o mais breve possível.`;
 
-    return `🎵 *Nova Escala - Grupo: ${bandName}*
+    return `Olá, ${participantName}! 👋
 
-Olá, ${participantName}! 👋
-
-Você foi escalado(a) para:
-
- ➡️ *Escala:* ${scheduleName} \n
- 🗓️ *Data:* ${formattedDate}${formattedTime} \n
- 🎸 *Instrumento:* ${instrumentText}${confirmationInstructions}
-
-_Mensagem enviada automaticamente pelo sistema de escalas._`;
+Você foi escalado(a) para Escala: ${scheduleName} \n
+ 🗓️ ${formattedDate}${formattedTime} \n
+ 🎸 ${instrumentText}
+ ${confirmationInstructions}`;
   }
 
   /**
@@ -92,19 +129,13 @@ _Mensagem enviada automaticamente pelo sistema de escalas._`;
       instrument ??
       "Instrumento não cadastrado";
 
-    return `⏰ *Lembrete de Escala - Grupo: ${bandName}*
+    return `⏰ *Lembrete*
 
 Olá, ${participantName}! 👋
 
-Não esqueça que você está escalado(a) para:
+Não esqueça que você está escalado(a) para o dia *${formattedDate}* com a função *${instrumentText}* na Escala *${scheduleName}*
 
- ➡️ *Escala:* ${scheduleName} \n
- 🗓️ *Data:* ${formattedDate}${formattedTime} \n
- 🎸 *Instrumento:* ${instrumentText}
-
-Nos vemos lá! 🙏
-
-_Mensagem enviada automaticamente pelo sistema de escalas._`;
+Nos vemos lá! 🙏`;
   }
 
   /**
@@ -118,7 +149,7 @@ _Mensagem enviada automaticamente pelo sistema de escalas._`;
   ): string {
     const formattedDate = this.formatDate(date);
 
-    return `❌ *Escala Cancelada - Grupo: ${bandName}*
+    return `❌ *Escala Cancelada*
 
 Olá, ${participantName}! 👋
 
@@ -127,9 +158,7 @@ A escala a seguir foi *cancelada*:
 ➡️ *Escala:* ${scheduleName} \n
 🗓️ *Data:* ${formattedDate}
 
-Entre em contato com o líder da banda para mais informações.
-
-_Mensagem enviada automaticamente pelo sistema de escalas._`;
+Entre em contato com o líder da banda para mais informações.`;
   }
 
   /**
@@ -147,7 +176,7 @@ _Mensagem enviada automaticamente pelo sistema de escalas._`;
     const formattedTime = time ? ` às ${this.formatTime(time)}` : "";
     const changesText = changes ? `\n\n📝 *Alterações:*\n${changes}` : "";
 
-    return `🔄 *Escala Atualizada - Grupo: ${bandName}*
+    return `🔄 *Escala Atualizada*
 
 Olá, ${participantName}! 👋
 
@@ -156,9 +185,7 @@ A escala foi *atualizada*:
 ➡️ *Escala:* ${scheduleName} \n
 🗓️ *Data:* ${formattedDate}${formattedTime}${changesText}
 
-Por favor, verifique as alterações.
-
-_Mensagem enviada automaticamente pelo sistema de escalas._`;
+Por favor, verifique as alterações.`;
   }
 
   /**

@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       participantId,
       isConfirmed,
       justification,
-      pendingConfirmation,
+      pendingConfirmation: pendingConfirmationId,
     } = body;
 
     if (!participantId || !scheduleId) {
@@ -135,27 +135,25 @@ export async function POST(request: Request) {
       });
 
       await cx.pendingConfirmation.update({
-        where: { id: pendingConfirmation },
+        where: { id: pendingConfirmationId },
         data: {
           status: "completed",
         },
       });
 
-      return {
-        updated,
-      };
+      return updated;
     });
 
-    console.log("Confirmação atualizada", response.updated);
+    console.log("Confirmação atualizada", response);
 
     return NextResponse.json({
       success: true,
-      message: `Confirmação ${isConfirmed ? "aceita" : "recusada"} para ${response.updated.participant.name}`,
-      scheduleParticipantId: response.updated.id,
+      message: `Confirmação ${isConfirmed ? "aceita" : "recusada"} para ${response.participant.name}`,
+      scheduleParticipantId: response.id,
       schedule: {
         id: scheduleParticipant.schedule.id,
-        name: response.updated.schedule.name,
-        date: response.updated.schedule.date,
+        name: response.schedule.name,
+        date: response.schedule.date,
       },
       confirmed: isConfirmed,
     });
