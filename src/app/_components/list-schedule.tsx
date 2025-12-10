@@ -7,6 +7,7 @@ import { CalendarDays, Grid } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CalendarView } from "./calendar-view";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { getMonthRange } from "@/lib/utils/getMonthRange";
 
 export const ListSchedule = () => {
   const [viewMode, setViewMode] = useState(() => {
@@ -14,10 +15,12 @@ export const ListSchedule = () => {
     return saved ?? "cards";
   });
 
+  const { start, end } = getMonthRange();
+
   const { bandId, isLoading } = useFindCurrentBandId();
   const { data, isPending } = api.schedule.list.useQuery(
-    { bandId: bandId ?? "" },
-    { enabled: !!bandId },
+    { bandId: bandId ?? "", startDate: start, endDate: end },
+    { enabled: !!bandId && !!start && !!end },
   );
 
   const schedules = data
@@ -63,7 +66,13 @@ export const ListSchedule = () => {
           {data &&
             data.length > 0 &&
             data?.map((schedule) => {
-              return <CardSchedule key={schedule.id} schedule={schedule} />;
+              return (
+                <CardSchedule
+                  isOwnSchedule={false}
+                  key={schedule.id}
+                  schedule={schedule}
+                />
+              );
             })}
         </TabsContent>
         <TabsContent value="calendar">
