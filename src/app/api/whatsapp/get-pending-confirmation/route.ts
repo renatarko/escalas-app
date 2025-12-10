@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
     console.log("--- WHATSAPP---", normalized);
 
-    const pending = await db.pendingConfirmation.findFirst({
+    const pendingResults = await db.pendingConfirmation.findMany({
       where: {
         whatsapp: normalized,
         // status: "awaiting_response",
@@ -64,8 +64,10 @@ export async function POST(request: Request) {
           select: {
             name: true,
             id: true,
+            whatsapp: true,
             scheduleParticipants: {
               select: {
+                participantId: true,
                 scheduleId: true,
                 confirmed: true,
                 justification: true,
@@ -77,27 +79,67 @@ export async function POST(request: Request) {
       },
     });
 
-    if (!pending) {
+    if (!pendingResults) {
       return Response.json({ scheduleId: null });
     }
 
-    const scheduleParticipant = pending.participant.scheduleParticipants.find(
-      (scheduleParticipant) =>
-        scheduleParticipant.scheduleId === pending.scheduleId,
-    );
+    const result = pendingResults.map((p) => {
+      const scheduleParticipant = p.participant.scheduleParticipants.find(
+        (sp) => sp.scheduleId === p.schedule.id,
+      );
+
+      return {
+        ...p,
+        participant: {
+          ...p.participant,
+          instrument: scheduleParticipant?.instrument,
+          confirmed: scheduleParticipant?.confirmed,
+          justification: scheduleParticipant?.justification,
+        },
+      };
+    });
+
+    // Get the most recent pending confirmation
+    const pendingConfirmation = result[0];
+    if (!pendingConfirmation) {
+      return Response.json({ scheduleId: null });
+
+      // return NextResponse.json(
+      //   { error: "Não encontramos um Chamado de notificação anterior." },
+      //   { status: 500 },
+      // );
+    }
+
+    const {
+      participantId,
+      scheduleId,
+      schedule,
+      id,
+      status,
+      participant: {
+        confirmed,
+        justification,
+        instrument,
+        name: participantName,
+      },
+    } = pendingConfirmation;
+    // const scheduleParticipant = pending.participant.scheduleParticipants.find(
+    //   (scheduleParticipant) =>
+    //     scheduleParticipant.scheduleId === pending.scheduleId,
+    // );
 
     return Response.json({
-      scheduleId: pending.scheduleId,
-      schedule: pending.schedule,
+      scheduleId,
+      schedule: schedule,
       member: {
-        id: pending.participant.id,
-        name: pending.participant.name,
-        confirmed: scheduleParticipant?.confirmed ?? null,
-        justification: scheduleParticipant?.justification ?? null,
-        instrument: scheduleParticipant?.instrument ?? null,
+        id: participantId,
+        name: participantName,
+        confirmed,
+        justification,
+        instrument,
       },
-      pendingConfirmation: pending.id,
-      pendingConfirmationStatus: pending.status,
+      pendingConfirmation: id,
+      pendingConfirmationStatus: status,
     });
   } catch (error) {
     console.error("Erro ao processar confirmação:", error);

@@ -29,7 +29,7 @@ export const Header = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  if (pathname.includes("auth")) {
+  if (pathname.includes("auth") || pathname.includes("confirmation")) {
     return null;
   }
 
