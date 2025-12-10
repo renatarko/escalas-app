@@ -436,11 +436,14 @@ export const scheduleRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const { startDate, endDate, status, bandId } = input;
 
+      const date: Record<string, Date> = {};
+      if (startDate) date.gte = startDate;
+      if (endDate) date.lte = endDate;
+
       const schedules = await ctx.db.schedule.findMany({
         where: {
           bandId,
-          ...(startDate && { date: { gte: startDate } }),
-          ...(endDate && { date: { lte: endDate } }),
+          ...(Object.keys(date).length ? { date } : {}),
           ...(status && { status }),
         },
         include: {
