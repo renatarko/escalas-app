@@ -24,34 +24,22 @@ import { useTabsStore } from "@/stores/use-tabs-store";
 import { api } from "@/trpc/react";
 import { Music2, Settings } from "lucide-react";
 import { redirect } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export default function DashboardHome() {
   const { membership } = getCurrentMembership();
   const { data: bands, isPending } = api.band.getBands.useQuery();
 
-  const currentNickname = getCurrentBandFromCookie();
   const { setTab } = useTabsStore();
 
-  const [redirecting, setRedirecting] = useState(false);
-  const [nickname, setNickname] = useState("");
+  const [redirecting, setRedirecting] = useState<string | null>(null);
 
   const handleBandChange = (nickname: string) => {
-    setNickname(nickname);
+    setRedirecting(nickname);
     setBandInCookie(nickname);
     setTab("scales");
-    setRedirecting(true);
+    redirect("/admin");
   };
-
-  useEffect(() => {
-    if (redirecting) {
-      if (currentNickname === nickname) {
-        setTimeout(() => {
-          redirect("/admin");
-        }, 1000);
-      }
-    }
-  }, [redirecting, nickname, currentNickname]);
 
   const ability = useAbility();
 
@@ -109,7 +97,11 @@ export default function DashboardHome() {
                     size="sm"
                     onClick={() => handleBandChange(band.nickname)}
                   >
-                    <Settings className="mr-2 h-4 w-4" />
+                    {redirecting && redirecting === band.nickname ? (
+                      <Spinner className="mr-2 h-4 w-4" />
+                    ) : (
+                      <Settings className="mr-2 h-4 w-4" />
+                    )}
                     {membership && membership.role !== "MEMBER"
                       ? "Gerenciar"
                       : "Ver detalhes"}
@@ -131,21 +123,6 @@ export default function DashboardHome() {
             ))}
         </div>
       </section>
-
-      <Dialog open={redirecting}>
-        <DialogTrigger />
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Carregando Banda</DialogTitle>
-            <DialogDescription>
-              Aguarde, estamos carregando os dados da sua Banda...
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex w-full items-center justify-center">
-            <Spinner className="size-8" />
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

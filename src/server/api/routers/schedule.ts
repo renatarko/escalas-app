@@ -65,12 +65,15 @@ export const scheduleRouter = createTRPCRouter({
         timeDate.setHours(hours, minutes, 0, 0);
       }
 
+      const start = new Date(date);
+      start.setUTCHours(0, 0, 0, 0);
+
       try {
         const schedule = await ctx.db.schedule.create({
           data: {
             bandId,
             name,
-            date,
+            date: start,
             time: timeDate,
             notes,
             recurrenceType: RecurrenceType.SINGLE,
@@ -169,6 +172,12 @@ export const scheduleRouter = createTRPCRouter({
         timeDate.setHours(hours, minutes, 0, 0);
       }
 
+      const start = new Date(startDate);
+      start.setUTCHours(0, 0, 0, 0);
+
+      const end = new Date(endDate);
+      end.setUTCHours(23, 59, 59, 999);
+
       try {
         // Criar configuração de recorrência
         const recurrenceConfig = await ctx.db.recurrenceConfig.create({
@@ -178,8 +187,8 @@ export const scheduleRouter = createTRPCRouter({
             dayOfWeek,
             weekOfMonth,
             time: timeDate,
-            startDate,
-            endDate,
+            startDate: start,
+            endDate: end,
             notes,
             createdById: ctx.session.user.id,
             participants: {
@@ -194,20 +203,23 @@ export const scheduleRouter = createTRPCRouter({
         // Gerar datas das escalas
         const scheduleDates = generateScheduleDates(
           frequency,
-          startDate,
-          endDate,
+          start,
+          end,
           dayOfWeek,
           weekOfMonth,
         );
 
         // Criar todas as escalas
         const schedules = await ctx.db.$transaction(
-          scheduleDates.map((date) =>
-            ctx.db.schedule.create({
+          scheduleDates.map((date) => {
+            const newDate = new Date(date);
+            date.setUTCHours(0, 0, 0, 0);
+
+            return ctx.db.schedule.create({
               data: {
                 bandId,
                 name,
-                date,
+                date: newDate,
                 time: timeDate,
                 notes,
                 recurrenceType: RecurrenceType.RECURRING,
@@ -220,8 +232,8 @@ export const scheduleRouter = createTRPCRouter({
                   })),
                 },
               },
-            }),
-          ),
+            });
+          }),
         );
 
         return {
@@ -372,12 +384,15 @@ export const scheduleRouter = createTRPCRouter({
         });
       }
 
+      const newDate = new Date(date);
+      newDate.setUTCHours(0, 0, 0, 0);
+
       try {
         const updated = await ctx.db.schedule.update({
           where: { id, bandId },
           data: {
             name,
-            date,
+            date: newDate,
             time: new Date(),
             notes,
             participants: {
@@ -450,7 +465,7 @@ export const scheduleRouter = createTRPCRouter({
           },
           recurrenceConfig: true,
         },
-        orderBy: [{ date: "asc" }, { time: "asc" }],
+        orderBy: [{ date: "asc" }],
       });
 
       return schedules.map((schedule) => ({
