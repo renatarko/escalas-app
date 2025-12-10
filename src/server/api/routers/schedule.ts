@@ -374,7 +374,9 @@ export const scheduleRouter = createTRPCRouter({
 
       const existing = await ctx.db.schedule.findUnique({
         where: { id },
-        include: { participants: true },
+        include: {
+          participants: true,
+        },
       });
 
       if (!existing) {
@@ -388,30 +390,94 @@ export const scheduleRouter = createTRPCRouter({
       newDate.setUTCHours(0, 0, 0, 0);
 
       try {
-        const updated = await ctx.db.schedule.update({
-          where: { id, bandId },
-          data: {
-            name,
-            date: newDate,
-            time: new Date(),
-            notes,
-            participants: {
-              deleteMany: {}, // limpa todos
-              create: participants.map((p) => ({
+        const existingParticipants = existing.participants;
+
+        const incomingByUser = new Map(
+          participants.map((p) => [p.participantId, p]),
+        );
+
+        const toCreate = participants.filter(
+          (p) =>
+            !existingParticipants.some(
+              (ep) => ep.participantId === p.participantId,
+            ),
+        );
+
+        const toUpdate = existingParticipants.filter((ep) => {
+          const incoming = incomingByUser.get(ep.participantId);
+          return incoming && incoming.instrument !== ep.instrument;
+        });
+
+        const toDelete = existingParticipants.filter(
+          (ep) => !incomingByUser.has(ep.participantId),
+        );
+
+        const updated = await ctx.db.$transaction(async (tx) => {
+          await tx.schedule.update({
+            where: { id, bandId },
+            data: {
+              name,
+              date: newDate,
+              time: timeDate,
+              notes,
+            },
+          });
+
+          for (const participant of toUpdate) {
+            const incoming = incomingByUser.get(participant.participantId);
+            if (!incoming) continue;
+            await tx.scheduleParticipant.update({
+              where: {
+                scheduleId_participantId: {
+                  scheduleId: id,
+                  participantId: participant.participantId,
+                },
+              },
+              data: {
+                instrument: incoming.instrument,
+              },
+            });
+          }
+
+          if (toCreate.length > 0) {
+            await tx.scheduleParticipant.createMany({
+              data: toCreate.map((p) => ({
+                scheduleId: id,
                 participantId: p.participantId,
                 instrument: p.instrument,
               })),
-            },
-          },
-          include: {
-            participants: {
-              include: {
-                participant: {
-                  select: { id: true, name: true, email: true, whatsapp: true },
+              // skipDuplicates: true,
+            });
+          }
+
+          if (toDelete.length > 0) {
+            await tx.scheduleParticipant.deleteMany({
+              where: {
+                scheduleId: id,
+                participantId: {
+                  in: toDelete.map((p) => p.participantId),
+                },
+              },
+            });
+          }
+
+          return tx.schedule.findUniqueOrThrow({
+            where: { id },
+            include: {
+              participants: {
+                include: {
+                  participant: {
+                    select: {
+                      id: true,
+                      name: true,
+                      email: true,
+                      whatsapp: true,
+                    },
+                  },
                 },
               },
             },
-          },
+          });
         });
 
         return { success: true, schedule: updated };
