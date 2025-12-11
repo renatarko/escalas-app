@@ -5,7 +5,6 @@ import type { RecurrenceType, ScheduleStatus } from "@prisma/client";
 import { CardSchedule } from "./card-schedule";
 import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
-import { useTabsStore } from "@/stores/use-tabs-store";
 
 type Participant = {
   id: string;
@@ -40,10 +39,10 @@ export const SchedulesCardView = ({
   isFiltered,
   className,
 }: SchedulesCardViewProps) => {
-  const { setTab } = useTabsStore();
+  const router = useRouter();
 
   const goToCreateSchedule = () => {
-    setTab("create-scales");
+    router.push("/admin/criar-escala");
   };
 
   if (isLoading) {

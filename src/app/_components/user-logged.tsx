@@ -18,7 +18,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { useTabsStore, type TabsStoreProps } from "@/stores/use-tabs-store";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { getCurrentMembership } from "@/lib/hooks/members";
@@ -26,7 +25,6 @@ import { isAdmin } from "@/lib/utils/role-checker";
 
 export const UserLogged = () => {
   const { data: session } = useSession();
-  const { tab, setTab } = useTabsStore();
   const { membership, band } = getCurrentMembership();
 
   const router = useRouter();
@@ -44,13 +42,6 @@ export const UserLogged = () => {
     return name.slice(0, 2).toUpperCase();
   }, [session]);
 
-  const handleTabChange = (value: TabsStoreProps) => {
-    setTab(value);
-
-    if (pathname === "/admin") return;
-    router.push("/admin");
-  };
-
   const redirectManagerRoute = () => {
     if (band) {
       router.push("/admin/manager");
@@ -59,9 +50,9 @@ export const UserLogged = () => {
     router.push("/onboarding");
   };
 
-  const setActiveColorIfTabIsActive = (currentTab: TabsStoreProps) => {
-    if (pathname !== "/admin") return;
-    if (currentTab === tab) return "bg-primary/5 text-primary";
+  const isCurrentPath = (target: string) => {
+    if (pathname === target) return true;
+    return pathname.startsWith(`${target}/`);
   };
 
   const isUserAdmin = isAdmin(membership);
@@ -84,16 +75,19 @@ export const UserLogged = () => {
         <DropdownMenuSeparator />
 
         <DropdownMenuItem
-          className={cn(setActiveColorIfTabIsActive("scales"))}
-          onClick={() => handleTabChange("scales")}
+          className={cn(isCurrentPath("/admin/escalas") && "bg-primary/5 text-primary")}
+          onClick={() => router.push("/admin/escalas")}
         >
           <CalendarDays className="mr-1 h-4 w-4" />
           Todas as Escalas
         </DropdownMenuItem>
 
         <DropdownMenuItem
-          className={cn(setActiveColorIfTabIsActive("my-scales"))}
-          onClick={() => handleTabChange("my-scales")}
+          className={cn(
+            isCurrentPath("/admin/minhas-escalas") &&
+              "bg-primary/5 text-primary",
+          )}
+          onClick={() => router.push("/admin/minhas-escalas")}
         >
           <Calendar className="mr-1 h-4 w-4" />
           Minhas Escalas
@@ -101,8 +95,11 @@ export const UserLogged = () => {
 
         {isUserAdmin && (
           <DropdownMenuItem
-            className={cn(setActiveColorIfTabIsActive("create-scales"))}
-            onClick={() => handleTabChange("create-scales")}
+            className={cn(
+              isCurrentPath("/admin/criar-escala") &&
+                "bg-primary/5 text-primary",
+            )}
+            onClick={() => router.push("/admin/criar-escala")}
           >
             <CalendarPlus className="mr-1 h-4 w-4" />
             Criar Escala
@@ -111,8 +108,11 @@ export const UserLogged = () => {
 
         {isUserAdmin && (
           <DropdownMenuItem
-            className={cn(setActiveColorIfTabIsActive("participants"))}
-            onClick={() => handleTabChange("participants")}
+            className={cn(
+              isCurrentPath("/admin/integrantes") &&
+                "bg-primary/5 text-primary",
+            )}
+            onClick={() => router.push("/admin/integrantes")}
           >
             <Users2 className="mr-1 h-4 w-4" />
             Integrantes
@@ -121,8 +121,11 @@ export const UserLogged = () => {
 
         {isUserAdmin && (
           <DropdownMenuItem
-            className={cn(setActiveColorIfTabIsActive("invitations"))}
-            onClick={() => handleTabChange("invitations")}
+            className={cn(
+              isCurrentPath("/admin/convites") &&
+                "bg-primary/5 text-primary",
+            )}
+            onClick={() => router.push("/admin/convites")}
           >
             <UserPlus className="mr-1 h-4 w-4" />
             Convidar Integrantes
