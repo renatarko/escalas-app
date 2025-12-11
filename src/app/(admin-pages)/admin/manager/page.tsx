@@ -16,11 +16,7 @@ import { Unauthorized } from "@/app/_components/unauthorized";
 import { useAbility } from "@/lib/auth/hooks/useAbility";
 import { memberRoleLabel } from "@/lib/constants";
 import { getCurrentMembership } from "@/lib/hooks/members";
-import {
-  getCurrentBandFromCookie,
-  setBandInCookie,
-} from "@/lib/utils/getCurrentBandFromCookie";
-import { useTabsStore } from "@/stores/use-tabs-store";
+import { setBandInCookie } from "@/lib/utils/getCurrentBandFromCookie";
 import { api } from "@/trpc/react";
 import { Music2, Settings } from "lucide-react";
 import { redirect } from "next/navigation";
@@ -30,15 +26,12 @@ export default function DashboardHome() {
   const { membership } = getCurrentMembership();
   const { data: bands, isPending } = api.band.getBands.useQuery();
 
-  const { setTab } = useTabsStore();
-
   const [redirecting, setRedirecting] = useState<string | null>(null);
 
   const handleBandChange = (nickname: string) => {
     setRedirecting(nickname);
     setBandInCookie(nickname);
-    setTab("scales");
-    redirect("/admin");
+    redirect("/admin/escalas");
   };
 
   const ability = useAbility();
