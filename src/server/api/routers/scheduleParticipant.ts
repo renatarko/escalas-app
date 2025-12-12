@@ -14,19 +14,56 @@ export const scheduleParticipantRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { scheduleId, participantId, pendingConfirmationId } = input;
 
-      return await ctx.db.$transaction(async (tx) => {
-        const updated = await tx.scheduleParticipant.update({
-          where: { scheduleId_participantId: { participantId, scheduleId } },
-          data: { confirmed: true },
+      try {
+        const updated = await ctx.db.$transaction(async (tx) => {
+          const scheduleParticipant = await tx.scheduleParticipant.update({
+            where: { scheduleId_participantId: { participantId, scheduleId } },
+            data: { confirmed: true, confirmedAt: new Date() },
+          });
+
+          await tx.pendingConfirmation.update({
+            where: {
+              id: pendingConfirmationId,
+            },
+            data: { status: "completed" },
+          });
+
+          return scheduleParticipant;
         });
-        await tx.pendingConfirmation.update({
-          where: {
-            id: pendingConfirmationId,
+
+        await ctx.db.notificationLog.create({
+          data: {
+            scheduleId: updated.scheduleId,
+            scheduleParticipantId: updated.id,
+            participantId: updated.participantId,
+            status: "success",
+            type: "confirmation",
+            message: "Participante confirmou presença via link",
           },
-          data: { status: "completed" },
         });
 
         return { success: updated.confirmed };
-      });
+      } catch (error) {
+        console.error("Erro ao confirmar participação", error);
+
+        try {
+          await ctx.db.notificationLog.create({
+            data: {
+              scheduleId,
+              participantId,
+              status: "error",
+              type: "confirmation",
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Erro ao confirmar participação",
+            },
+          });
+        } catch (logError) {
+          console.error("Falha ao registrar log de confirmação", logError);
+        }
+
+        throw error;
+      }
     }),
 });

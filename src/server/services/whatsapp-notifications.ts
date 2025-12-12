@@ -8,6 +8,42 @@ import type {
   WhatsAppNotificationResult,
 } from "@/lib/whatsapp";
 
+async function logNotificationResults({
+  scheduleId,
+  type,
+  results,
+  participantMap,
+}: {
+  scheduleId: string;
+  type: NotificationType;
+  results: WhatsAppNotificationResult[];
+  participantMap: Map<
+    string,
+    { scheduleParticipantId?: string; participantId?: string }
+  >;
+}) {
+  if (!results.length) return;
+
+  try {
+    await db.notificationLog.createMany({
+      data: results.map((result) => {
+        const match = participantMap.get(result.userId);
+        return {
+          scheduleId,
+          scheduleParticipantId: match?.scheduleParticipantId,
+          participantId: match?.participantId,
+          status: result.success ? "success" : "error",
+          type,
+          message: result.messageId,
+          error: result.error,
+        };
+      }),
+    });
+  } catch (error) {
+    console.error("Erro ao registrar logs de notificação", error);
+  }
+}
+
 type NotificationType = "notification" | "reminder" | "cancellation" | "update";
 
 type ProcessScheduleNotificationsParams = {
@@ -95,6 +131,16 @@ export async function processScheduleNotifications({
     results = await whatsappService.sendScheduleNotifications(payload);
   }
 
+  const participantMap = new Map(
+    participantsWithWhatsapp.map((participant) => [
+      participant.participantId,
+      {
+        scheduleParticipantId: participant.scheduleParticipantId,
+        participantId: participant.participantId,
+      },
+    ]),
+  );
+
   const successfulUserIds = results
     .filter((result) => result.success && result.userId)
     .map((result) => result.userId);
@@ -114,6 +160,13 @@ export async function processScheduleNotifications({
 
   const successCount = results.filter((r) => r.success).length;
   const failCount = results.filter((r) => !r.success).length;
+
+  await logNotificationResults({
+    scheduleId: schedule.id,
+    type,
+    results,
+    participantMap,
+  });
 
   return {
     success: true,

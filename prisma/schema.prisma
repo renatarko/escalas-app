@@ -273,3 +273,18 @@ model PendingConfirmation {
   @@index([whatsapp, status, expiresAt])
   @@map("pending_confirmations")
 }
+
+model NotificationLog {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  scheduleId            String   @map("schedule_id") @db.ObjectId
+  scheduleParticipantId String?  @map("schedule_participant_id") @db.ObjectId
+  participantId         String?  @map("participant_id") @db.ObjectId
+  status                String
+  type                  String
+  message               String?
+  error                 String?
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  @@index([scheduleId])
+  @@map("notification_logs")
+}

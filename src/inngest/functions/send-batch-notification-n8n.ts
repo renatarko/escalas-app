@@ -1,7 +1,6 @@
 import { NonRetriableError } from "inngest";
 import { inngest } from "../client";
 import { processScheduleAndParticipantNotifications } from "@/server/services/whatsapp-notifications";
-import type { ScheduleNotificationPayload } from "./types";
 import { env } from "@/env";
 import { db } from "@/server/db";
 import { generateScheduleNotificationMessage } from "@/lib/whatsapp/whatsapp-service";
@@ -32,9 +31,13 @@ export const sendBatchNotificationN8N = inngest.createFunction(
       const result = await step.run(
         `process-${scheduleParticipant}`,
         async () => {
+          let scheduleByParticipantInfo: Awaited<
+            ReturnType<typeof processScheduleAndParticipantNotifications>
+          > | null = null;
+
           try {
             // 1. Buscar info
-            const scheduleByParticipantInfo =
+            scheduleByParticipantInfo =
               await processScheduleAndParticipantNotifications({
                 scheduleParticipant,
               });
@@ -127,6 +130,17 @@ export const sendBatchNotificationN8N = inngest.createFunction(
               whatsapp: payload.member.whatsapp,
             });
 
+            await db.notificationLog.create({
+              data: {
+                scheduleId: scheduleByParticipantInfo.schedule.id,
+                scheduleParticipantId: scheduleParticipant,
+                participantId: scheduleByParticipantInfo.member.id,
+                status: "success",
+                type: "notification",
+                message: "Messagem de confirmação enviada com sucesso",
+              },
+            });
+
             return {
               success: true,
               scheduleParticipant,
@@ -134,6 +148,19 @@ export const sendBatchNotificationN8N = inngest.createFunction(
             };
           } catch (error: any) {
             console.error("Erro ao enviar mensagem:", error);
+
+            if (scheduleByParticipantInfo?.schedule?.id) {
+              await db.notificationLog.create({
+                data: {
+                  scheduleId: scheduleByParticipantInfo.schedule.id,
+                  scheduleParticipantId: scheduleParticipant,
+                  participantId: scheduleByParticipantInfo?.member?.id,
+                  status: "error",
+                  type: "notification",
+                  error: error?.message ?? "Erro desconhecido",
+                },
+              });
+            }
 
             return {
               success: false,

@@ -8,6 +8,7 @@ import { memberRouter } from "./routers/member";
 import { whatsappRouter } from "./routers/whatsapp";
 import { scheduleParticipantRouter } from "./routers/scheduleParticipant";
 import { pendingConfirmationRouter } from "./routers/pendingConfirmation";
+import { notificationLogRouter } from "./routers/notification-log";
 
 /**
  * This is the primary router for your server.
@@ -24,6 +25,7 @@ export const appRouter = createTRPCRouter({
   invitation: invitationRouter,
   whatsapp: whatsappRouter,
   pendingConfirmation: pendingConfirmationRouter,
+  notificationLog: notificationLogRouter,
 });
 
 // export type definition of API

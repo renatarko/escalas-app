@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
+  Bell,
   Calendar1,
   CalendarPlus,
   CalendarRange,
@@ -42,6 +43,12 @@ const menuItems: MenuItem[] = [
     title: "Criar Escala",
     url: "/admin/criar-escala",
     icon: CalendarPlus,
+    adminOnly: true,
+  },
+  {
+    title: "Notificações",
+    url: "/admin/notifications",
+    icon: Bell,
     adminOnly: true,
   },
   {
