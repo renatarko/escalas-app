@@ -5,7 +5,6 @@ import { Badge } from "@/app/_components/ui/badge";
 import { Button } from "@/app/_components/ui/button";
 import { Spinner } from "@/app/_components/ui/spinner";
 import { Unauthorized } from "@/app/_components/unauthorized";
-import { useAbility } from "@/lib/auth/hooks/useAbility";
 import { memberRoleLabel } from "@/lib/constants";
 import { getCurrentMembership } from "@/lib/hooks/members";
 import { cn } from "@/lib/utils";
@@ -19,7 +18,7 @@ import { redirect } from "next/navigation";
 import { useState } from "react";
 
 export default function DashboardHome() {
-  const { membership } = getCurrentMembership();
+  const { membership, isLoading } = getCurrentMembership();
   const { data: bands, isPending } = api.band.getBands.useQuery();
 
   const currentBand = getCurrentBandFromCookie();
@@ -31,9 +30,24 @@ export default function DashboardHome() {
     redirect("/admin/escalas");
   };
 
-  const ability = useAbility();
+  if (isLoading || isPending) {
+    return (
+      <div className="mt-36 flex w-full flex-col items-center justify-center gap-4">
+        <div className="mt-6 flex justify-center">
+          <div className="flex space-x-2">
+            <div className="bg-primary/70 h-3 w-3 animate-bounce rounded-full [animation-delay:-0.3s]" />
+            <div className="bg-primary/80 h-3 w-3 animate-bounce rounded-full [animation-delay:-0.15s]" />
+            <div className="bg-primary h-3 w-3 animate-bounce rounded-full" />
+          </div>
+        </div>
+        <h2 className="animate-pulse text-center">
+          Aguarde, estamos preparando seu ambiente...
+        </h2>
+      </div>
+    );
+  }
 
-  if (!ability.can("manage", "User")) {
+  if (!membership || membership.role === "MEMBER") {
     return <Unauthorized />;
   }
 
@@ -48,16 +62,16 @@ export default function DashboardHome() {
         </p>
       </section>
 
-      <section className="mb-16 flex justify-center gap-4">
-        <CreateBandDialog label="Nova Banda" />
-      </section>
-
       {/* Lista de Bandas */}
       <section className="sm:px-6">
-        <h2 className="mb-6 flex items-center gap-2 text-xl font-semibold">
-          <Music2 className="h-5 w-5 text-teal-600" />
-          Minhas Bandas
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="mb-6 flex items-center gap-2 text-xl font-semibold">
+            <Music2 className="text-primary h-5 w-5" />
+            Minhas Bandas
+          </h2>
+
+          <CreateBandDialog label="Nova Banda" />
+        </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {isPending &&
