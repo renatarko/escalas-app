@@ -402,7 +402,7 @@ export default function ScheduleForm({
                 )}
               />
 
-              <FormField
+              {/* <FormField
                 control={form.control}
                 name="time"
                 render={({ field }) => (
@@ -419,7 +419,7 @@ export default function ScheduleForm({
                     <FormMessage />
                   </FormItem>
                 )}
-              />
+              /> */}
             </div>
           )}
 
@@ -676,8 +676,11 @@ export default function ScheduleForm({
                       key={instrument}
                       className="rounded-lg border bg-linear-to-br from-gray-50 to-gray-100 p-3"
                     >
-                      <div className="mb-3 flex flex-col space-y-2">
+                      <div className="mb-3 flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
+                          <span className="bg-primary ml-auto rounded-full px-2 py-0.5 text-xs text-white">
+                            {members.length}
+                          </span>
                           <span className="text-lg">
                             {instrumentsIcons[instrument as Instrument]}
                           </span>
@@ -685,9 +688,6 @@ export default function ScheduleForm({
                             {instrumentOptions.find(
                               (inst) => inst.value === instrument,
                             )?.label ?? instrument}
-                          </span>
-                          <span className="bg-primary ml-auto rounded-full px-2 py-0.5 text-xs text-white">
-                            {members.length}
                           </span>
                         </div>
                         <Button
@@ -702,6 +702,7 @@ export default function ScheduleForm({
                           <Plus /> Adicionar
                         </Button>
                       </div>
+
                       <div className="space-y-2">
                         {members.map((member, memberIndex) => {
                           const fieldIndex = fields.findIndex((f, idx) => {
@@ -918,10 +919,10 @@ export default function ScheduleForm({
             <Label
               key={instrument.value}
               htmlFor={instrument.value}
-              className={`hover:bg-muted/50 flex cursor-pointer items-center justify-between gap-1 p-2 transition-all`}
+              className={`hover:bg-muted/50 flex cursor-pointer flex-col items-start justify-between gap-1 p-2 transition-all sm:flex-row sm:items-center`}
             >
               <div className="flex items-center gap-2">
-                <span className="text-2xl">
+                <span className="sm:text-2xl">
                   {instrumentsIcons[instrument.value as Instrument]}
                 </span>
                 <span className="font-medium">{instrument.label}</span>
@@ -930,7 +931,7 @@ export default function ScheduleForm({
               <Input
                 id={instrument.value}
                 type="number"
-                className="h-10 w-16"
+                className="h-10 w-full sm:w-16"
                 placeholder="0"
                 onChange={(e) => handleInstrumentChange(e, instrument.value)}
                 value={
