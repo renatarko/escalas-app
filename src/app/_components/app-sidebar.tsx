@@ -4,11 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
-  Calendar,
+  Calendar1,
   CalendarPlus,
   CalendarRange,
   LayoutDashboard,
-  Music2,
   UserPlus2,
   Users2,
 } from "lucide-react";
@@ -25,6 +24,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
 } from "./ui/sidebar";
 
 type MenuItem = {
@@ -37,7 +37,7 @@ type MenuItem = {
 const menuItems: MenuItem[] = [
   { title: "Minhas bandas", url: "/admin/manager", icon: LayoutDashboard },
   { title: "Escalas", url: "/admin/escalas", icon: CalendarRange },
-  { title: "Minhas Escalas", url: "/admin/minhas-escalas", icon: Calendar },
+  // { title: "Minhas Escalas", url: "/admin/minhas-escalas", icon: Calendar },
   {
     title: "Criar Escala",
     url: "/admin/criar-escala",
@@ -50,7 +50,12 @@ const menuItems: MenuItem[] = [
     icon: Users2,
     adminOnly: true,
   },
-  { title: "Convites", url: "/admin/convites", icon: UserPlus2, adminOnly: true },
+  {
+    title: "Convites",
+    url: "/admin/convites",
+    icon: UserPlus2,
+    adminOnly: true,
+  },
 ];
 
 export function AppSidebar() {
@@ -69,18 +74,20 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-sidebar-border border-r">
-      <SidebarHeader className="p-6">
-        <div className="flex items-center gap-3">
-          <div className="from-primary to-accent glow-primary flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br shadow-lg">
-            <Music2 className="text-primary-foreground h-5 w-5" />
+      <SidebarHeader className="p-4">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="from-primary to-accent glow-primary flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br shadow-lg">
+            <Calendar1 className="text-primary-foreground h-5 w-5 shrink-0" />
           </div>
           <div>
-            <h1 className="font-display text-sidebar-foreground text-lg font-bold">
-              Escalas
-            </h1>
-            <p className="text-muted-foreground text-xs">Gestão de Bandas</p>
+            <h2 className="font-display text-sidebar-foreground text-2xl font-bold">
+              Escalas App
+            </h2>
+            <p className="text-muted-foreground text-xs">
+              Gestão de escalas e bandas
+            </p>
           </div>
-        </div>
+        </Link>
       </SidebarHeader>
 
       <SidebarContent>
@@ -89,16 +96,20 @@ export function AppSidebar() {
             <SidebarMenu>
               {visibleMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton
+                    tooltip={item.title}
+                    isActive={isActive(item.url)}
+                    size="lg"
+                    className="p-0"
+                  >
                     <Link
                       href={item.url}
                       className={cn(
-                        "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200",
-                        isActive(item.url) &&
-                          "bg-sidebar-accent text-sidebar-foreground",
+                        "focus:border-node group flex flex-1 items-center gap-3 p-2 focus:outline-none",
+                        isActive(item.url) && "text-primary",
                       )}
                     >
-                      <item.icon className="h-5 w-5" />
+                      <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -108,6 +119,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarRail />
     </Sidebar>
   );
 }
