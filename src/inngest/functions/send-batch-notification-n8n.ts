@@ -3,6 +3,8 @@ import { inngest } from "../client";
 import { processScheduleAndParticipantNotifications } from "@/server/services/whatsapp-notifications";
 import type { ScheduleNotificationPayload } from "./types";
 import { env } from "@/env";
+import { db } from "@/server/db";
+import { generateScheduleNotificationMessage } from "@/lib/whatsapp/whatsapp-service";
 
 export const sendBatchNotificationN8N = inngest.createFunction(
   {
@@ -47,8 +49,45 @@ export const sendBatchNotificationN8N = inngest.createFunction(
               );
             }
 
+            const pendingResponse = await db.pendingConfirmation.create({
+              data: {
+                whatsapp: scheduleByParticipantInfo.member.whatsapp,
+                expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000), // 48h
+                status: "awaiting_response",
+                participantId: scheduleByParticipantInfo.member.id,
+                scheduleId: scheduleByParticipantInfo.schedule.id,
+              },
+            });
+
             // 2. Criar payload
-            const payload: ScheduleNotificationPayload = {
+            // const payload: ScheduleNotificationPayload = {
+            //   evolution: {
+            //     instance: env.EVOLUTION_INSTANCE_NAME,
+            //     serverUrl: env.EVOLUTION_API_URL,
+            //     apikey: "DB678B3D5F36-47D6-BC95-C7FD516D0140",
+            //   },
+            //   app: {
+            //     webhookUrl: env.NEXT_PUBLIC_API_URL,
+            //     xApiKey: env.EVOLUTION_API_KEY,
+            //   },
+            //   ...scheduleByParticipantInfo,
+            // };
+
+            if (!pendingResponse.id) {
+              throw new Error(`Erro ao salvar pending`);
+            }
+
+            const message = generateScheduleNotificationMessage({
+              bandName: scheduleByParticipantInfo.schedule.name,
+              date: scheduleByParticipantInfo.schedule.date,
+              scheduleName: scheduleByParticipantInfo.schedule.name,
+              participantName: scheduleByParticipantInfo.member.name,
+              scheduleParticipantId: scheduleParticipant,
+              pendingConfirmationId: pendingResponse.id,
+              instrument: scheduleByParticipantInfo.member.instrument,
+            });
+
+            const payload = {
               evolution: {
                 instance: env.EVOLUTION_INSTANCE_NAME,
                 serverUrl: env.EVOLUTION_API_URL,
@@ -59,29 +98,8 @@ export const sendBatchNotificationN8N = inngest.createFunction(
                 xApiKey: env.EVOLUTION_API_KEY,
               },
               ...scheduleByParticipantInfo,
+              message,
             };
-
-            // 3. Salvar pending confirmation
-            const saveResponse = await fetch(
-              `${env.NEXT_PUBLIC_API_URL}/api/whatsapp/save-pending-confirmation`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "x-api-key": env.EVOLUTION_API_KEY,
-                },
-                body: JSON.stringify({
-                  whatsapp: payload.member.whatsapp,
-                  scheduleId: payload.schedule.id,
-                  participantId: payload.member.id,
-                }),
-              },
-            );
-
-            if (!saveResponse.ok) {
-              const err = await saveResponse.json();
-              throw new Error(`Erro ao salvar pending: ${err.error}`);
-            }
 
             // 4. Enviar para o webhook do n8n
             const n8nUrl = env.N8N_BASE_URL.endsWith("/")
