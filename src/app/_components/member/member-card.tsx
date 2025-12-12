@@ -1,8 +1,15 @@
 "use client";
 
-import { Edit, MoreVertical, Phone, ToggleLeft, Trash2 } from "lucide-react";
+import {
+  Guitar,
+  MoreVertical,
+  Phone,
+  ToggleLeft,
+  Trash2,
+  UserRoundCog,
+} from "lucide-react";
 import { Button } from "../ui/button";
-import { instrumentOptions } from "@/lib/constants";
+import { instrumentOptions, memberRoleLabel } from "@/lib/constants";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,9 +23,7 @@ import {
 import { useState } from "react";
 import { Label } from "../ui/label";
 import { Checkbox } from "../ui/checkbox";
-import { api } from "@/trpc/react";
 import { toast } from "sonner";
-import { useFindCurrentBandId } from "@/lib/hooks/band";
 import { getCurrentMembership } from "@/lib/hooks/members";
 import { isAdmin } from "@/lib/utils/role-checker";
 import { Card, CardContent } from "../ui/card";
@@ -31,6 +36,35 @@ import {
 } from "../ui/dropdown-menu";
 import { InstrumentBadge } from "../instrument-badge";
 import { Badge } from "../ui/badge";
+import { BandRole } from "@prisma/client";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
+import {
+  useRemoveMember,
+  useUpdateActiveStats,
+  useUpdateMemberInstrument,
+  useUpdateMemberRole,
+} from "@/hooks/use-member";
+
+const bandMemberRoles = [
+  {
+    label: "Proprietário",
+    value: BandRole.OWNER,
+    description:
+      "O proprietário poderá criar, editar e excluir escalas, convidar, editar e remover integrantes e enviar notificações para os integrantes da escala",
+  },
+  {
+    label: "Admistrador",
+    value: BandRole.ADMIN,
+    description:
+      "O administrador poderá criar e editar escalas, convidar e editar integrantes e enviar notificações para os integrantes da escala",
+  },
+  {
+    label: "Integrante",
+    value: BandRole.MEMBER,
+    description:
+      "O integrante só poderá visualizar sua escalas e poderá ser escalado para qualquer escala dentro do seu grupo/banda",
+  },
+];
 
 type ParticipantProps = {
   id: string;
@@ -38,6 +72,7 @@ type ParticipantProps = {
   whatsapp: string | null;
   instruments: string[];
   isActive: boolean;
+  role: BandRole;
 };
 
 export const MemberCard = ({
@@ -46,54 +81,53 @@ export const MemberCard = ({
   whatsapp,
   instruments,
   isActive,
+  role,
 }: ParticipantProps) => {
-  const { bandId } = useFindCurrentBandId();
-  const { membership } = getCurrentMembership();
+  const { membership, band } = getCurrentMembership();
 
   const [open, setOpen] = useState({
     active: false,
     edit: false,
+    editRole: false,
     delete: false,
   });
+
   const [selected, setSelected] = useState<string[]>(instruments);
+  const [selectedRole, setSelectedRole] = useState<BandRole | null>(role);
 
-  const utils = api.useUtils();
-  const { mutateAsync: updateInstruments, isPending: loading } =
-    api.bandMember.updateInstruments.useMutation({
-      async onSuccess() {
-        await utils.bandMember.getBandMembers.invalidate();
-        toast.success("Funções alteradas com sucesso");
-        setOpen({ ...open, edit: false });
-      },
-    });
+  const updateMemberRole = useUpdateMemberRole();
+  const updateInstruments = useUpdateMemberInstrument();
+  const updateActiveStats = useUpdateActiveStats();
+  const removeIntegrant = useRemoveMember();
 
-  const { mutateAsync: updateStatus, isPending: statsIsLoading } =
-    api.bandMember.updateActiveStats.useMutation({
-      async onSuccess(data) {
-        await utils.bandMember.getBandMembers.invalidate();
-        toast.success(
-          data?.isActive
-            ? "Integrante ativado com sucesso"
-            : "Integrante desativado com sucesso",
-        );
-        setOpen({ ...open, active: false });
-      },
-    });
-
-  const { mutateAsync: removeIntegrant, isPending: removeIsLoading } =
-    api.bandMember.removeMember.useMutation({
-      async onSuccess() {
-        await utils.bandMember.getBandMembers.invalidate();
-        toast.success("Integrante removido");
-        setOpen({ ...open, delete: false });
-      },
-    });
+  const handleUpdateMemberBandRole = async () => {
+    const toastId = toast.loading("Atualizando...");
+    try {
+      if (!id || !selectedRole || !band) return;
+      await updateMemberRole.mutateAsync({
+        bandNickname: band.nickname,
+        memberId: id,
+        role: selectedRole,
+      });
+      setOpen({ ...open, editRole: false });
+    } catch (error) {
+      console.log(error);
+      toast.error("Não foi possível alterar as funções");
+    } finally {
+      toast.dismiss(toastId);
+    }
+  };
 
   const handleUpdateInstruments = async () => {
     const toastId = toast.loading("Atualizando...");
     try {
-      if (!bandId) return;
-      await updateInstruments({ bandId, memberId: id, instruments: selected });
+      if (!band) return;
+      await updateInstruments.mutateAsync({
+        bandId: band.id,
+        memberId: id,
+        instruments: selected,
+      });
+      setOpen({ ...open, edit: false });
     } catch (error) {
       console.log(error);
       toast.error("Não foi possível alterar as funções");
@@ -105,8 +139,9 @@ export const MemberCard = ({
   const handleRemoveIntegrant = async () => {
     const toastId = toast.loading("Removendo...");
     try {
-      if (!bandId) return;
-      await removeIntegrant({ bandId, memberId: id });
+      if (!band) return;
+      await removeIntegrant.mutateAsync({ bandId: band.id, memberId: id });
+      setOpen({ ...open, delete: false });
     } catch (error) {
       console.log(error);
       toast.error("Não foi possível remover Integrante");
@@ -119,8 +154,13 @@ export const MemberCard = ({
     const toastId = toast.loading(checked ? "Ativando..." : "Desativando...");
 
     try {
-      if (!bandId) return;
-      await updateStatus({ bandId, memberId: id, isActive: checked });
+      if (!band) return;
+      await updateActiveStats.mutateAsync({
+        bandId: band.id,
+        memberId: id,
+        isActive: checked,
+      });
+      setOpen({ ...open, delete: false });
     } catch (error) {
       console.log(error);
       toast.error("Não foi atualizar status do Integrante");
@@ -130,6 +170,12 @@ export const MemberCard = ({
   };
 
   const isUserAdmin = isAdmin(membership);
+
+  const memberRoleColor = {
+    OWNER: "default",
+    ADMIN: "secondary",
+    MEMBER: "outline",
+  };
 
   return (
     <>
@@ -147,10 +193,14 @@ export const MemberCard = ({
             />
             <div className="flex items-center gap-1">
               <Badge
-                variant="secondary"
+                variant={"secondary"}
                 className={`${isActive ? "bg-primary/10 text-primary" : "bg-muted"}`}
               >
                 {isActive ? "Ativo" : "Inativo"}
+              </Badge>
+
+              <Badge variant={memberRoleColor[role]}>
+                {memberRoleLabel[role]}
               </Badge>
 
               {isUserAdmin && (
@@ -164,14 +214,20 @@ export const MemberCard = ({
                     <DropdownMenuItem
                       onClick={() => setOpen({ ...open, edit: true })}
                     >
-                      <Edit className="mr-2 h-4 w-4" />
+                      <Guitar className="mr-1 h-4 w-4" />
+                      Editar intrumento
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setOpen({ ...open, editRole: true })}
+                    >
+                      <UserRoundCog className="mr-1 h-4 w-4" />
                       Editar
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
                       onClick={() => setOpen({ ...open, delete: true })}
                     >
-                      <Trash2 className="mr-2 h-4 w-4" />
+                      <Trash2 className="mr-1 h-4 w-4" />
                       Remover
                     </DropdownMenuItem>
                     <DropdownMenuItem
@@ -211,6 +267,56 @@ export const MemberCard = ({
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog open={open.editRole}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Editar Integrante</AlertDialogTitle>
+            <AlertDialogDescription>
+              Alterar funções do Integrante{" "}
+              <span className="text-primary underline">{name}</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <RadioGroup
+            className="space-y-2"
+            value={selectedRole}
+            onValueChange={setSelectedRole}
+          >
+            {bandMemberRoles.map((option) => {
+              return (
+                <div key={option.value} className="space-y-2">
+                  <Label
+                    className="flex cursor-pointer items-center gap-2 font-medium"
+                    htmlFor={option.value}
+                  >
+                    <RadioGroupItem value={option.value} id={option.value} />
+                    {option.label}
+                  </Label>
+
+                  <p className="bg-primary/10 rounded-md p-1 text-xs">
+                    {option.description}
+                  </p>
+                </div>
+              );
+            })}
+          </RadioGroup>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => setOpen({ ...open, editRole: false })}
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={role === selectedRole || updateMemberRole.isPending}
+              onClick={handleUpdateMemberBandRole}
+            >
+              Alterar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={open.edit}>
         <AlertDialogContent>
@@ -258,7 +364,7 @@ export const MemberCard = ({
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
-              disabled={loading}
+              disabled={updateInstruments.isPending}
               onClick={handleUpdateInstruments}
             >
               Atualizar
@@ -284,7 +390,7 @@ export const MemberCard = ({
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
-              disabled={removeIsLoading}
+              disabled={removeIntegrant.isPending}
               className="bg-destructive/90 hover:bg-destructive duration-150"
               onClick={handleRemoveIntegrant}
             >
@@ -319,7 +425,7 @@ export const MemberCard = ({
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
-              disabled={statsIsLoading}
+              disabled={updateActiveStats.isPending}
               className="bg-primary/90 hover:bg-primary duration-150"
               onClick={() => handleActiveChange(!isActive)}
             >
