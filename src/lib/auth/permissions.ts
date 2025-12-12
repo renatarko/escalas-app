@@ -17,10 +17,15 @@ export const permissions: Record<Role, PermissionsByRole> = {
     can(["delete"], "Schedule", {
       createdById: { $eq: user.id },
     });
+    can(["update", "manage"], "User");
     can(["transfer_ownership", "update"], "Band", {
       createdById: { $eq: user.id },
     });
     cannot(["transfer_ownership", "update"], "Band");
+    cannot(["delete"], "User", {
+      id: { $eq: user.id },
+      role: { $eq: user.role },
+    });
   },
   MEMBER(user, { can }) {
     can("read", "Band");
@@ -32,5 +37,6 @@ export const permissions: Record<Role, PermissionsByRole> = {
     can(["update", "delete"], "Band", {
       createdById: { $eq: user.id },
     });
+    can("read", "User");
   },
 };

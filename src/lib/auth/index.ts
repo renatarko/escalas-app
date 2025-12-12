@@ -9,10 +9,12 @@ import { permissions } from "./permissions";
 import { bandSubject } from "./subjects/band";
 import { scheduleSubject } from "./subjects/schedule";
 import { type User } from "./models/user";
+import { userSubject } from "./subjects/user";
 
 const appAbilitiesSchema = z.union([
   bandSubject,
   scheduleSubject,
+  userSubject,
   z.tuple([z.literal("manage"), z.literal("all")]),
 ]);
 

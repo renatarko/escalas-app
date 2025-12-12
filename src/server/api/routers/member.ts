@@ -1,3 +1,4 @@
+import { getUserPermissions } from "@/lib/utils/getUserPermitions";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { getMembership } from "@/server/utils/get-memberhip";
 import { BandRole } from "@prisma/client";
@@ -98,7 +99,7 @@ export const memberRouter = createTRPCRouter({
   updateMember: protectedProcedure
     .input(
       z.object({
-        nickname: z.string(),
+        bandNickname: z.string(),
         memberId: z.string(),
         role: z.enum([BandRole.ADMIN, BandRole.MEMBER, BandRole.OWNER]),
       }),
@@ -106,23 +107,67 @@ export const memberRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id ?? "";
 
-      const member = await getMembership(input.nickname, userId, ctx.db);
+      const membership = await getMembership(
+        input.bandNickname,
+        userId,
+        ctx.db,
+      );
 
-      if (!member) {
-        return null;
+      if (!membership) {
+        throw new Error("Cannot find membership");
       }
 
-      const { band, ...membership } = member;
+      const { cannot } = getUserPermissions(membership.userId, membership.role);
 
-      if (membership.role === "MEMBER") {
-        throw new Error("Not authorized to update member");
+      if (cannot("update", "User")) {
+        throw new Error("Not authorized to update user");
       }
 
-      return ctx.db.bandMember.update({
-        where: { id: input.memberId, bandId: band.id },
-        data: { role: input.role },
-      });
+      if (input.role === "OWNER") {
+        // find the current OWNER
+        await ctx.db.$transaction(async (tx) => {
+          const currentOwner = await tx.bandMember.findFirst({
+            where: {
+              bandId: membership.bandId,
+              role: BandRole.OWNER,
+            },
+          });
+
+          if (currentOwner) {
+            await tx.bandMember.update({
+              where: {
+                bandId_userId: {
+                  bandId: membership.bandId,
+                  userId: currentOwner.userId,
+                },
+              },
+              data: { role: BandRole.ADMIN },
+            });
+          }
+
+          await tx.bandMember.update({
+            where: {
+              bandId_userId: {
+                bandId: membership.bandId,
+                userId: input.memberId,
+              },
+            },
+            data: { role: BandRole.OWNER },
+          });
+        });
+      } else {
+        return ctx.db.bandMember.update({
+          where: {
+            bandId_userId: {
+              bandId: membership.bandId,
+              userId: input.memberId,
+            },
+          },
+          data: { role: input.role },
+        });
+      }
     }),
+
   updateActiveStats: protectedProcedure
     .input(
       z.object({
