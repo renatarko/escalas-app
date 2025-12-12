@@ -30,6 +30,8 @@ import {
 } from "../ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { useMemo, useState } from "react";
+import { isAdmin } from "@/lib/utils/role-checker";
+import { getCurrentMembership } from "@/lib/hooks/members";
 
 interface ScheduleCardProps {
   schedule: Schedule;
@@ -46,6 +48,7 @@ export function ScheduleCard({
   compact = false,
   isSending = false,
 }: Readonly<ScheduleCardProps>) {
+  const { membership } = getCurrentMembership();
   const { status, confirmed, pending } = getScheduleStatus(
     schedule.participants,
   );
@@ -65,6 +68,8 @@ export function ScheduleCard({
     }
     return schedule.participants.slice(0, 3);
   }, [expandedCard, schedule.participants]);
+
+  const isAdminRole = isAdmin(membership);
 
   return (
     <Card
@@ -152,7 +157,7 @@ export function ScheduleCard({
                     status={getConfirmationStatus(member.confirmed)}
                     size="sm"
                   />
-                  {!member.confirmed && (
+                  {isAdminRole && !member.confirmed && (
                     <DropdownMenu modal={false}>
                       <DropdownMenuTrigger>
                         <MoreVertical className="size-4" />
@@ -200,43 +205,45 @@ export function ScheduleCard({
         )}
 
         {/* Actions */}
-        <div className="flex items-center gap-2 pt-2">
-          {pending > 0 && !isPast && onSendConfirmations && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="sm"
-                  onClick={() => onSendConfirmations(schedule.id)}
-                  className="flex-1"
-                  disabled={isSending}
-                >
-                  {isSending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                  Notificar
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {isSending
-                  ? "Enviando..."
-                  : "Enviar noficação de confirmação para todos integrantes"}
-              </TooltipContent>
-            </Tooltip>
-          )}
-          {!isPast && onViewDetails && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onViewDetails(schedule)}
-              className={pending > 0 && !isPast ? "" : "flex-1"}
-            >
-              Ver Detalhes
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
+        {isAdminRole && (
+          <div className="flex items-center gap-2 pt-2">
+            {pending > 0 && !isPast && onSendConfirmations && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    onClick={() => onSendConfirmations(schedule.id)}
+                    className="flex-1"
+                    disabled={isSending}
+                  >
+                    {isSending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                    Notificar
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isSending
+                    ? "Enviando..."
+                    : "Enviar noficação de confirmação para todos integrantes"}
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {!isPast && onViewDetails && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onViewDetails(schedule)}
+                className={pending > 0 && !isPast ? "" : "flex-1"}
+              >
+                Ver Detalhes
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
