@@ -1,5 +1,5 @@
-import { ListParticipants } from "@/app/_components/list-participants";
-import { TabsContentCustom } from "@/app/_components/tab-content-custom";
+import { MembersList } from "@/app/_components/member/members-list";
+import { HeaderPanel } from "@/app/_components/header-panel";
 import { Unauthorized } from "@/app/_components/unauthorized";
 import { getCurrentMembership, getCurrentOrg } from "@/lib/auth/ability";
 import { isAdmin } from "@/lib/utils/role-checker";
@@ -21,8 +21,12 @@ export default async function IntegrantesPage() {
   }
 
   return (
-    <TabsContentCustom title="Gerenciar Integrantes">
-      <ListParticipants />
-    </TabsContentCustom>
+    <>
+      <HeaderPanel
+        title="Integrantes"
+        description="Gerencie os membros da banda"
+      />
+      <MembersList />
+    </>
   );
 }

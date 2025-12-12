@@ -3,20 +3,16 @@
 import { CreateBandDialog } from "@/app/_components/create-band-dialog";
 import { Badge } from "@/app/_components/ui/badge";
 import { Button } from "@/app/_components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/app/_components/ui/dialog";
 import { Spinner } from "@/app/_components/ui/spinner";
 import { Unauthorized } from "@/app/_components/unauthorized";
 import { useAbility } from "@/lib/auth/hooks/useAbility";
 import { memberRoleLabel } from "@/lib/constants";
 import { getCurrentMembership } from "@/lib/hooks/members";
-import { setBandInCookie } from "@/lib/utils/getCurrentBandFromCookie";
+import { cn } from "@/lib/utils";
+import {
+  getCurrentBandFromCookie,
+  setBandInCookie,
+} from "@/lib/utils/getCurrentBandFromCookie";
 import { api } from "@/trpc/react";
 import { Music2, Settings } from "lucide-react";
 import { redirect } from "next/navigation";
@@ -26,6 +22,7 @@ export default function DashboardHome() {
   const { membership } = getCurrentMembership();
   const { data: bands, isPending } = api.band.getBands.useQuery();
 
+  const currentBand = getCurrentBandFromCookie();
   const [redirecting, setRedirecting] = useState<string | null>(null);
 
   const handleBandChange = (nickname: string) => {
@@ -75,7 +72,11 @@ export default function DashboardHome() {
             bands.map((band) => (
               <div
                 key={band.id}
-                className="bg-card border-muted flex flex-col justify-between rounded-2xl border p-6 shadow-sm transition hover:shadow-md"
+                className={cn(
+                  "bg-card border-muted flex flex-col justify-between rounded-2xl border p-6 shadow-sm transition hover:shadow-md",
+                  currentBand === band.nickname &&
+                    "border-primary/80 border shadow-md",
+                )}
               >
                 <div>
                   <h3 className="mb-1 text-lg font-semibold">{band.name}</h3>

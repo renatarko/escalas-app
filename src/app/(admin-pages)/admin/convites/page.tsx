@@ -1,6 +1,6 @@
 import { CreateParticipantForm } from "@/app/_components/create-participant-form";
 import { ListInvite } from "@/app/_components/list-invite";
-import { TabsContentCustom } from "@/app/_components/tab-content-custom";
+import { HeaderPanel } from "@/app/_components/header-panel";
 import { Unauthorized } from "@/app/_components/unauthorized";
 import { getCurrentMembership, getCurrentOrg } from "@/lib/auth/ability";
 import { isAdmin } from "@/lib/utils/role-checker";
@@ -22,9 +22,10 @@ export default async function ConvitesPage() {
   }
 
   return (
-    <TabsContentCustom title="Convidar Integrantes">
+    <>
+      <HeaderPanel title="Convidar Integrantes" />
       <CreateParticipantForm />
       <ListInvite />
-    </TabsContentCustom>
+    </>
   );
 }

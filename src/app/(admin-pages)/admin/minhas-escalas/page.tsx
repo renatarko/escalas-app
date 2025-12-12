@@ -1,5 +1,5 @@
 import { ListScheduleParticipant } from "@/app/_components/list-schedule-participant";
-import { TabsContentCustom } from "@/app/_components/tab-content-custom";
+import { HeaderPanel } from "@/app/_components/header-panel";
 import { Unauthorized } from "@/app/_components/unauthorized";
 import { getCurrentMembership, getCurrentOrg } from "@/lib/auth/ability";
 import { auth } from "@/server/auth";
@@ -18,8 +18,9 @@ export default async function MinhasEscalasPage() {
   }
 
   return (
-    <TabsContentCustom title="Minhas Escalas">
+    <>
+      <HeaderPanel title="Minhas Escalas" />
       <ListScheduleParticipant />
-    </TabsContentCustom>
+    </>
   );
 }

@@ -1,5 +1,5 @@
 import { ListSchedule } from "@/app/_components/list-schedule";
-import { TabsContentCustom } from "@/app/_components/tab-content-custom";
+import { HeaderPanel } from "@/app/_components/header-panel";
 import { Unauthorized } from "@/app/_components/unauthorized";
 import { getCurrentMembership, getCurrentOrg } from "@/lib/auth/ability";
 import { auth } from "@/server/auth";
@@ -18,8 +18,13 @@ export default async function EscalasPage() {
   }
 
   return (
-    <TabsContentCustom title="Gerenciar Escalas">
+    <>
+      <HeaderPanel
+        title="Escalas"
+        description="Gerencie todas as escalas da banda"
+      />
+
       <ListSchedule />
-    </TabsContentCustom>
+    </>
   );
 }

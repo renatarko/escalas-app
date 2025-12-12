@@ -1,5 +1,5 @@
 import { CreateSchedule } from "@/app/_components/create-schedule";
-import { TabsContentCustom } from "@/app/_components/tab-content-custom";
+import { HeaderPanel } from "@/app/_components/header-panel";
 import { Unauthorized } from "@/app/_components/unauthorized";
 import { getCurrentMembership, getCurrentOrg } from "@/lib/auth/ability";
 import { isAdmin } from "@/lib/utils/role-checker";
@@ -21,8 +21,9 @@ export default async function CriarEscalaPage() {
   }
 
   return (
-    <TabsContentCustom title="Criar Escala">
+    <>
+      <HeaderPanel title="Criar Escala" />
       <CreateSchedule />
-    </TabsContentCustom>
+    </>
   );
 }
