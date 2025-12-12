@@ -6,8 +6,17 @@ import { cookies } from "next/headers";
 import { defineAbilityFor } from ".";
 
 export async function getCurrentOrg() {
-  const cookie = (await cookies()).get("nicknameBand")?.value;
-  return cookie ?? null;
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get("nicknameBand")?.value;
+  if (cookie) return cookie;
+
+  // Fallback: pegar a primeira banda disponível do usuário
+  const bands = await api.band.getBands();
+  if (bands?.length) {
+    return bands[0]?.nickname ?? null;
+  }
+
+  return null;
 }
 
 export async function getCurrentMembership() {
