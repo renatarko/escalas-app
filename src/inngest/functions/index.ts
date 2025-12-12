@@ -10,3 +10,4 @@ export {
   expireAwaitingPendingConfirmations,
   cleanupExpiredOrCompletedPendingConfirmations,
 } from "./clean-pending-confirmations";
+export { cleanupOldNotificationLogs } from "./clean-notification-logs";

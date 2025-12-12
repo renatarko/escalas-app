@@ -57,9 +57,8 @@ export const sendNotificationN8N = inngest.createFunction(
           },
         });
 
-        if (!response) {
-          const error = await response.json();
-          throw new Error(`Erro ao salvar sessão: ${error}`);
+        if (!response?.id) {
+          throw new Error("Erro ao salvar sessão: id não retornado");
         }
 
         return response.id;
@@ -135,6 +134,17 @@ export const sendNotificationN8N = inngest.createFunction(
         return result;
       } catch (error) {
         console.error("Erro ao chamar N8N webhook:", error);
+        await db.notificationLog.create({
+          data: {
+            scheduleId: scheduleByParticipantInfo.schedule.id,
+            scheduleParticipantId: scheduleParticipant,
+            participantId: scheduleByParticipantInfo.member.id,
+            status: "error",
+            type: "notification",
+            error:
+              error instanceof Error ? error.message : "Erro ao enviar webhook",
+          },
+        });
         throw error;
       }
     });
@@ -146,6 +156,17 @@ export const sendNotificationN8N = inngest.createFunction(
         memberId: payload.member.id,
         whatsapp: payload.member.whatsapp,
         timestamp: new Date().toISOString(),
+      });
+
+      await db.notificationLog.create({
+        data: {
+          scheduleId: payload.schedule.id,
+          scheduleParticipantId: scheduleParticipant,
+          participantId: payload.member.id,
+          status: "success",
+          type: "notification",
+          message: `Messagem de confirmação enviada com sucesso`,
+        },
       });
     });
 
