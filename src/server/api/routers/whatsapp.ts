@@ -3,6 +3,7 @@ import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
 import { whatsappService, evolutionAPI } from "@/lib/whatsapp";
 import { inngest } from "@/inngest/client";
+import { processScheduleNotifications } from "@/server/services/whatsapp-notifications";
 import { EventsName } from "@/inngest/functions/eventsName";
 
 export const whatsappRouter = createTRPCRouter({
@@ -145,29 +146,39 @@ export const whatsappRouter = createTRPCRouter({
     .input(
       z.object({
         scheduleId: z.string(),
-        // type: z
-        //   .enum(["notification", "reminder", "cancellation", "update"])
-        //   .default("notification"),
+        type: z
+          .enum(["notification", "reminder", "cancellation", "update"])
+          .default("notification"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const scheduleParticipantsId =
-          await ctx.db.scheduleParticipant.findMany({
-            where: {
-              scheduleId: input.scheduleId,
-            },
-            select: {
-              id: true,
-            },
+        const scheduleParticipants = await ctx.db.scheduleParticipant.findMany({
+          where: { scheduleId: input.scheduleId },
+          select: {
+            id: true,
+          },
+        });
+
+        if (!scheduleParticipants) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Relação de Escala e Participantes não encontrada.",
           });
+        }
 
         const result = await inngest.send({
           name: EventsName["batch-n8n"],
           data: {
-            scheduleParticipants: scheduleParticipantsId.map(({ id }) => id),
+            scheduleParticipants: scheduleParticipants.map(({ id }) => id),
           },
         });
+
+        return result;
+        // const result = await processScheduleNotifications({
+        //   scheduleId: input.scheduleId,
+        //   type: input.type,
+        // });
 
         return result;
       } catch (error) {
@@ -179,6 +190,35 @@ export const whatsappRouter = createTRPCRouter({
               : "Erro ao agendar notificações",
         });
       }
+
+      // try {
+      //   const scheduleParticipantsId =
+      //     await ctx.db.scheduleParticipant.findMany({
+      //       where: {
+      //         scheduleId: input.scheduleId,
+      //       },
+      //       select: {
+      //         id: true,
+      //       },
+      //     });
+
+      //   const result = await inngest.send({
+      //     name: EventsName["batch-n8n"],
+      //     data: {
+      //       scheduleParticipants: scheduleParticipantsId.map(({ id }) => id),
+      //     },
+      //   });
+
+      //   return result;
+      // } catch (error) {
+      //   throw new TRPCError({
+      //     code: "INTERNAL_SERVER_ERROR",
+      //     message:
+      //       error instanceof Error
+      //         ? error.message
+      //         : "Erro ao agendar notificações",
+      //   });
+      // }
     }),
 
   // Enviar notificação para participante específico
@@ -190,6 +230,75 @@ export const whatsappRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // try {
+      //   const schedule = await ctx.db.schedule.findUnique({
+      //     where: { id: input.scheduleId },
+      //     include: {
+      //       band: { select: { name: true } },
+      //       participants: {
+      //         where: { participantId: input.participantId },
+      //         include: {
+      //           participant: {
+      //             select: { id: true, name: true, whatsapp: true },
+      //           },
+      //         },
+      //       },
+      //     },
+      //   });
+
+      //   if (!schedule) {
+      //     throw new TRPCError({
+      //       code: "NOT_FOUND",
+      //       message: "Escala não encontrada",
+      //     });
+      //   }
+
+      //   const participant = schedule.participants[0];
+      //   if (!participant) {
+      //     throw new TRPCError({
+      //       code: "NOT_FOUND",
+      //       message: "Participante não encontrado na escala",
+      //     });
+      //   }
+
+      //   if (!participant.participant.whatsapp) {
+      //     throw new TRPCError({
+      //       code: "BAD_REQUEST",
+      //       message: "Participante não tem WhatsApp cadastrado",
+      //     });
+      //   }
+
+      //   const result = await whatsappService.sendScheduleNotification({
+      //     whatsapp: participant.participant.whatsapp,
+      //     participantName: participant.participant.name ?? "Participante",
+      //     bandName: schedule.band.name,
+      //     scheduleName: schedule.name ?? "Escala",
+      //     date: schedule.date.toISOString(),
+      //     time: schedule.time?.toISOString(),
+      //     instrument: participant.instrument,
+      //     scheduleParticipantId: participant.id,
+      //   });
+
+      //   if (result.success) {
+      //     await ctx.db.scheduleParticipant.update({
+      //       where: { id: participant.id },
+      //       data: {
+      //         notificationSent: true,
+      //         notificationSentAt: new Date(),
+      //       },
+      //     });
+      //   }
+      //   return result;
+      // } catch (error) {
+      //   throw new TRPCError({
+      //     code: "INTERNAL_SERVER_ERROR",
+      //     message:
+      //       error instanceof Error
+      //         ? error.message
+      //         : "Erro ao enviar notificação",
+      //   });
+      // }
+
       try {
         const { scheduleId, participantId } = input;
 
