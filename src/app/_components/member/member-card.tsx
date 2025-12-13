@@ -50,19 +50,19 @@ const bandMemberRoles = [
     label: "Proprietário",
     value: BandRole.OWNER,
     description:
-      "O proprietário poderá criar, editar e excluir escalas, convidar, editar e remover integrantes e enviar notificações para os integrantes da escala",
+      "Tem controle total sobre a banda. Pode criar, editar e excluir escalas, convidar, editar e remover integrantes, definir permissões, transferir a propriedade da banda e enviar notificações para todos os integrantes das escalas.",
   },
   {
     label: "Admistrador",
     value: BandRole.ADMIN,
     description:
-      "O administrador poderá criar e editar escalas, convidar e editar integrantes e enviar notificações para os integrantes da escala",
+      "Auxilia na gestão da banda e das escalas. Pode criar e editar escalas, convidar e editar integrantes, organizar participações e enviar notificações para os integrantes das escalas. Não pode excluir a banda nem transferir a propriedade.",
   },
   {
     label: "Integrante",
     value: BandRole.MEMBER,
     description:
-      "O integrante só poderá visualizar sua escalas e poderá ser escalado para qualquer escala dentro do seu grupo/banda",
+      "Participa das escalas da banda. Pode visualizar suas escalas, confirmar ou recusar participações e ser escalado para qualquer escala dentro da banda. Não possui permissões administrativas.",
   },
 ];
 
