@@ -1,36 +1,33 @@
-import {
-  Calendar,
-  CalendarPlus,
-  CalendarDays,
-  LayoutDashboard,
-  LogOut,
-  User,
-  UserPlus,
-  Users2,
-} from "lucide-react";
+"use client";
+
+import { LogOut, User, Music2 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { usePathname, useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
 import { getCurrentMembership } from "@/lib/hooks/members";
 import { isAdmin } from "@/lib/utils/role-checker";
+import { api } from "@/trpc/react";
+import {
+  getCurrentBandFromCookie,
+  setBandInCookie,
+} from "@/lib/utils/getCurrentBandFromCookie";
+import { CreateBandDialog } from "./create-band-dialog";
 
 export const UserLogged = () => {
   const { data: session } = useSession();
-  const { membership, band } = getCurrentMembership();
+  const { membership } = getCurrentMembership();
+  const { data: bands, isPending: bandIsPending } =
+    api.band.getBands.useQuery();
 
-  const router = useRouter();
-  const pathname = usePathname();
-
-  const [open, setOpen] = useState(false);
+  const currentBand = getCurrentBandFromCookie();
 
   const userLogged = useMemo(() => {
     const name = session?.user?.name;
@@ -42,99 +39,55 @@ export const UserLogged = () => {
     return name.slice(0, 2).toUpperCase();
   }, [session]);
 
-  const redirectManagerRoute = () => {
-    if (band) {
-      router.push("/admin/manager");
-      return;
-    }
-    router.push("/onboarding");
-  };
-
-  const isCurrentPath = (target: string) => {
-    if (pathname === target) return true;
-    return pathname.startsWith(`${target}/`);
+  const handleBandChange = (nickname: string) => {
+    setBandInCookie(nickname);
+    window.location.reload();
   };
 
   const isUserAdmin = isAdmin(membership);
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu>
       <DropdownMenuTrigger className="bg-muted border-input h-10 w-10 rounded-full border p-2 uppercase">
         {userLogged ?? <User />}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-full">
-        <DropdownMenuLabel>Minha conta</DropdownMenuLabel>
+        <DropdownMenuLabel>
+          {isUserAdmin ? "Bandas/Grupos" : "Área do membro"}
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={redirectManagerRoute}
-          className={`${pathname === "/admin/manager" && "bg-primary/5 text-primary"}`}
-        >
-          <LayoutDashboard className="mr-1 h-4 w-4" />
-          Minhas bandas/grupos
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-
-        <DropdownMenuItem
-          className={cn(isCurrentPath("/admin/escalas") && "bg-primary/5 text-primary")}
-          onClick={() => router.push("/admin/escalas")}
-        >
-          <CalendarDays className="mr-1 h-4 w-4" />
-          Todas as Escalas
-        </DropdownMenuItem>
-
-        <DropdownMenuItem
-          className={cn(
-            isCurrentPath("/admin/minhas-escalas") &&
-              "bg-primary/5 text-primary",
-          )}
-          onClick={() => router.push("/admin/minhas-escalas")}
-        >
-          <Calendar className="mr-1 h-4 w-4" />
-          Minhas Escalas
-        </DropdownMenuItem>
-
         {isUserAdmin && (
-          <DropdownMenuItem
-            className={cn(
-              isCurrentPath("/admin/criar-escala") &&
-                "bg-primary/5 text-primary",
-            )}
-            onClick={() => router.push("/admin/criar-escala")}
-          >
-            <CalendarPlus className="mr-1 h-4 w-4" />
-            Criar Escala
-          </DropdownMenuItem>
+          <DropdownMenuGroup>
+            {bandIsPending &&
+              Array.from({ length: 2 }).map((item, i) => (
+                <DropdownMenuItem
+                  key={i + 1}
+                  disabled
+                  className={"bg-muted h-12 w-full animate-pulse"}
+                >
+                  <Music2 className="opacity-50" />
+                </DropdownMenuItem>
+              ))}
+
+            {bands?.map((band) => (
+              <DropdownMenuItem
+                key={band.id}
+                onClick={() => handleBandChange(band.nickname)}
+                className={`font-medium ${currentBand === band.nickname ? "bg-primary/5 text-primary" : ""}`}
+              >
+                <Music2 />
+                {band.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
         )}
 
-        {isUserAdmin && (
-          <DropdownMenuItem
-            className={cn(
-              isCurrentPath("/admin/integrantes") &&
-                "bg-primary/5 text-primary",
-            )}
-            onClick={() => router.push("/admin/integrantes")}
-          >
-            <Users2 className="mr-1 h-4 w-4" />
-            Integrantes
-          </DropdownMenuItem>
-        )}
+        <CreateBandDialog variant="ghost" label="Nova banda" />
 
-        {isUserAdmin && (
-          <DropdownMenuItem
-            className={cn(
-              isCurrentPath("/admin/convites") &&
-                "bg-primary/5 text-primary",
-            )}
-            onClick={() => router.push("/admin/convites")}
-          >
-            <UserPlus className="mr-1 h-4 w-4" />
-            Convidar Integrantes
-          </DropdownMenuItem>
-        )}
-
-        <DropdownMenuSeparator />
+        {isUserAdmin && <DropdownMenuSeparator />}
         <DropdownMenuItem
           className="cursor-pointer"
+          variant="destructive"
           onClick={() => signOut({ callbackUrl: "/", redirect: true })}
         >
           <LogOut className="mr-2 h-4 w-4" />

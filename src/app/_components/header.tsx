@@ -5,13 +5,16 @@ import Link from "next/link";
 import { Button } from "./ui/button";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
-import { UserLogged } from "./user-logged";
+import { usePathname, useRouter } from "next/navigation";
+import { getCurrentMembership } from "@/lib/hooks/members";
 
 export const Header = () => {
+  const router = useRouter();
   const { data: session } = useSession();
-  const user = session?.user;
   const pathname = usePathname();
+
+  const user = session?.user;
+  const { band } = getCurrentMembership();
 
   const [isVisible, setIsVisible] = useState(true);
 
@@ -33,6 +36,14 @@ export const Header = () => {
     return null;
   }
 
+  const redirectManagerRoute = () => {
+    if (band) {
+      router.push("/admin/manager");
+      return;
+    }
+    router.push("/onboarding");
+  };
+
   return (
     <header
       className={`border-muted bg-muted fixed right-0 left-0 z-50 container mx-auto flex items-center justify-between rounded-lg border-b p-4 shadow-md sm:top-6 ${isVisible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-100 sm:opacity-0"} duration-150`}
@@ -41,9 +52,9 @@ export const Header = () => {
         <CalendarCheck className="size-6" />
       </Link>
       <div className="flex items-center gap-4 justify-self-end">
-        {!!user && user.role === "ADMIN" && <UserLogged />}
-
-        {!!user && user.role === "USER" && <UserLogged />}
+        {!!user && (
+          <Button onClick={redirectManagerRoute}>Minhas Escalas</Button>
+        )}
 
         {!user && (
           <Button variant="outline">

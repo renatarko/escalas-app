@@ -147,13 +147,13 @@ export const ListSchedule = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="relative max-w-md">
+      <div className="relative sm:max-w-md">
         <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
         <Input
           placeholder="Buscar escalas..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
+          className="h-14 pl-10"
         />
       </div>
 
@@ -162,13 +162,13 @@ export const ListSchedule = () => {
         onValueChange={(value) => setViewMode(value as "calendar" | "cards")}
         className="flex flex-col gap-6"
       >
-        <div className="flex flex-row-reverse items-center gap-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-col items-center gap-4 sm:flex-row-reverse sm:gap-2">
+          <div className="flex w-full flex-col justify-end gap-2 sm:flex-row sm:items-center">
             <Popover open={openFilter} onOpenChange={handleOpenChange}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full justify-start gap-2 text-left font-normal sm:w-fit"
+                  className="h-14 w-full justify-start gap-2 text-left font-normal sm:w-fit"
                 >
                   <DateRangeIcon className="h-4 w-4" />
                   <span className="truncate">{selectedLabel}</span>
@@ -220,15 +220,15 @@ export const ListSchedule = () => {
             </Button>
           </div>
 
-          <TabsList className="bg-card flex self-center overflow-hidden border p-1 shadow-none">
+          <TabsList className="bg-card flex h-14 w-full self-center overflow-hidden border p-1 shadow-none sm:w-28">
             <TabsTrigger
               className="text-md data-[state=active]:bg-primary rounded-md py-3"
               value="cards"
             >
-              <Grid className="size-4" />
+              <Grid className="size-6 sm:size-4" />
             </TabsTrigger>
             <TabsTrigger className="text-md rounded-md py-3" value="calendar">
-              <CalendarDays className="size-4" />
+              <CalendarDays className="size-6 sm:size-4" />
             </TabsTrigger>
           </TabsList>
         </div>

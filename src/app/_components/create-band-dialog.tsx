@@ -19,8 +19,18 @@ import { toast } from "sonner";
 import { CirclePlus } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { setBandInCookie } from "@/lib/utils/getCurrentBandFromCookie";
+import { cn } from "@/lib/utils";
 
-export const CreateBandDialog = ({ label }: { label: string }) => {
+type CreateBandDialogProps = {
+  label: string;
+} & React.ComponentProps<typeof Button>;
+
+export const CreateBandDialog = ({
+  label,
+  variant = "default",
+  size = "lg",
+  className,
+}: CreateBandDialogProps) => {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -78,9 +88,10 @@ export const CreateBandDialog = ({ label }: { label: string }) => {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
+          variant={variant}
           aria-controls="create-band-dialog"
-          className="bg-teal-700 px-8 text-white hover:bg-teal-800"
-          size="lg"
+          className={cn(className)}
+          size={size}
           disabled={loading}
         >
           <CirclePlus className="size-4" />

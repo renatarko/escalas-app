@@ -64,8 +64,8 @@ export default function DashboardHome() {
 
       {/* Lista de Bandas */}
       <section className="sm:px-6">
-        <div className="flex items-center justify-between">
-          <h2 className="mb-6 flex items-center gap-2 text-xl font-semibold">
+        <div className="mb-8 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-xl font-semibold">
             <Music2 className="text-primary h-5 w-5" />
             Minhas Bandas
           </h2>

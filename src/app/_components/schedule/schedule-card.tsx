@@ -91,7 +91,7 @@ export function ScheduleCard({
               {schedule.title}
             </h3>
             <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-3 text-sm">
-              <span className="flex items-center gap-1.5">
+              <span className="flex items-center gap-1.5 truncate">
                 <Calendar className="text-primary h-4 w-4" />
                 {format(new Date(schedule.date), "dd 'de' MMMM", {
                   locale: ptBR,
