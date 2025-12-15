@@ -96,6 +96,57 @@ export const memberRouter = createTRPCRouter({
       });
     }),
 
+  getAllMembersFromOwnerBand: protectedProcedure
+    .input(z.object({ bandNickname: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id ?? "";
+
+      const membership = await getMembership(
+        input.bandNickname,
+        userId,
+        ctx.db,
+      );
+
+      if (!membership) {
+        throw new Error("Cannot find membership");
+      }
+
+      if (membership.role !== "OWNER") {
+        throw new Error("Not authorized to update do this action");
+      }
+
+      const data = await ctx.db.bandMember.findMany({
+        where: {
+          band: {
+            createdBy: {
+              is: { id: userId },
+            },
+          },
+          userId: { not: userId },
+          user: {
+            bandMemberships: {
+              none: {
+                bandId: membership.bandId,
+              },
+            },
+          },
+        },
+        select: {
+          user: { select: { name: true } },
+          role: true,
+          userId: true,
+          instruments: true,
+        },
+      });
+
+      return data.map((item) => ({
+        id: item.userId,
+        name: item.user.name,
+        instruments: item.instruments,
+        role: item.role,
+      }));
+    }),
+
   updateMember: protectedProcedure
     .input(
       z.object({
@@ -234,6 +285,45 @@ export const memberRouter = createTRPCRouter({
 
       return result;
     }),
+
+  addMembersToOtherBand: protectedProcedure
+    .input(
+      z.object({
+        bandId: z.string(),
+        bandNickname: z.string(),
+        members: z.array(z.string()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id ?? "";
+
+      const membership = await getMembership(
+        input.bandNickname,
+        userId,
+        ctx.db,
+      );
+
+      if (!membership) {
+        throw new Error("Cannot find membership");
+      }
+
+      const { cannot } = getUserPermissions(membership.userId, membership.role);
+
+      if (cannot("manage", "User")) {
+        throw new Error("Not authorized to update");
+      }
+
+      const membersCreated = await ctx.db.bandMember.createMany({
+        data: input.members.map((userId) => ({
+          bandId: input.bandId,
+          userId,
+          role: "MEMBER",
+        })),
+      });
+
+      return membersCreated;
+    }),
+
   removeMember: protectedProcedure
     .input(
       z.object({
