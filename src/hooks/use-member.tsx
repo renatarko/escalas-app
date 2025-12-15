@@ -1,8 +1,5 @@
-import { useMemo } from "react";
 import { toast } from "sonner";
-
-import { useFindCurrentBandId } from "@/lib/hooks/band";
-import { api, type RouterInputs, type RouterOutputs } from "@/trpc/react";
+import { api } from "@/trpc/react";
 
 export function useUpdateMemberRole() {
   const utils = api.useUtils();
@@ -60,6 +57,33 @@ export function useRemoveMember() {
     },
     onError(error) {
       toast.error(error.message ?? "Erro ao remover integrante");
+    },
+  });
+}
+
+export function useGetAllMembersFromOwnerBand(bandNickname?: string | null) {
+  const { data: members, isPending } =
+    api.bandMember.getAllMembersFromOwnerBand.useQuery(
+      { bandNickname: bandNickname ?? "" },
+      { enabled: !!bandNickname },
+    );
+  return {
+    members,
+    loading: isPending,
+  };
+}
+
+export function useAddMembersFromOtherBand() {
+  const utils = api.useUtils();
+
+  return api.bandMember.addMembersToOtherBand.useMutation({
+    async onSuccess() {
+      await utils.bandMember.getBandMembers.invalidate();
+      await utils.bandMember.getAllMembersFromOwnerBand.invalidate();
+      toast.success("Integrantes adcionados com sucesso");
+    },
+    onError(error) {
+      toast.error(error.message ?? "Erro ao adicionar integrantes");
     },
   });
 }

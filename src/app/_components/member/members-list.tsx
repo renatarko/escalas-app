@@ -5,6 +5,7 @@ import { MemberCard } from "./member-card";
 import { Search } from "lucide-react";
 import { Input } from "../ui/input";
 import { useState } from "react";
+import { MembersDialogSelect } from "./member-select";
 
 export const MembersList = () => {
   const [search, setSearch] = useState("");
@@ -33,7 +34,7 @@ export const MembersList = () => {
 
   const filteredMembers = (members || []).filter(
     (member) =>
-      member?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      member?.name?.toLowerCase().includes(search.toLowerCase()) ??
       member.instruments[0]?.toLowerCase().includes(search.toLowerCase()),
   );
 
@@ -54,6 +55,8 @@ export const MembersList = () => {
           <MemberCard key={member.id} {...member} />
         ))}
       </div>
+
+      <MembersDialogSelect className="w-full" />
 
       {filteredMembers.length === 0 && (
         <div className="bg-card border-border rounded-xl border py-12 text-center">
