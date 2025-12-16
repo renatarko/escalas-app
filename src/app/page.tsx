@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Button } from "./_components/ui/button";
 import { CardInfo } from "./_components/ui/card-info";
 import { auth } from "@/server/auth";
+import { redirect } from "next/navigation";
 
 async function getMemberData(userId?: string) {
   if (!userId) {
@@ -18,6 +19,8 @@ export default async function Home() {
   const session = await auth();
 
   const data = await getMemberData(session?.user.id);
+
+  redirect("/landing-page");
 
   return (
     <HydrateClient>

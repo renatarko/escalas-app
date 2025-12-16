@@ -4,7 +4,7 @@ import { type Metadata } from "next";
 import { Poppins } from "next/font/google";
 import { TRPCReactProvider } from "@/trpc/react";
 import { Toaster } from "./_components/ui/sonner";
-import { Header } from "./_components/header";
+import { Header } from "./_components/landing-page/header";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/server/auth";
 import { AbilityProvider } from "@/lib/utils/abilityContext";
@@ -94,6 +94,7 @@ export default async function RootLayout({
             }}
           >
             <SessionProvider session={session}>
+              {/* <Header /> */}
               <Header />
               {children}
             </SessionProvider>
