@@ -1,22 +1,28 @@
 import { getUserPermissions } from "@/lib/utils/getUserPermitions";
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "@/server/api/trpc";
 import { getMembership } from "@/server/utils/get-memberhip";
 import { BandRole } from "@prisma/client";
 import { z } from "zod";
 
 export const memberRouter = createTRPCRouter({
-  getUserMembership: protectedProcedure
+  getUserMembership: publicProcedure
     .input(
       z.object({
         nickname: z.string(),
       }),
     )
     .query(async ({ ctx, input }) => {
-      const member = await getMembership(
-        input.nickname,
-        ctx.session.user.id,
-        ctx.db,
-      );
+      const userId = ctx.session?.user.id;
+
+      if (!userId) {
+        return null;
+      }
+
+      const member = await getMembership(input.nickname, userId, ctx.db);
 
       if (!member) {
         return null;

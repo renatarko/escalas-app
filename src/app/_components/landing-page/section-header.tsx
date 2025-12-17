@@ -15,7 +15,7 @@ export function SectionHeader({
 }: SectionHeaderProps) {
   return (
     <div className={cn("mb-16 text-center", className)}>
-      <h2 className="mb-4 text-2xl font-bold sm:text-5xl">
+      <h2 className="mb-4 text-3xl font-bold sm:text-5xl">
         {title}{" "}
         {highlight && (
           <span className="from-primary to-primary/80 text-card-foreground/50 bg-linear-to-r bg-clip-text">

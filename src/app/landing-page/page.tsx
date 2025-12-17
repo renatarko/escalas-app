@@ -1,7 +1,6 @@
 "use client";
 
 import { Check, Zap, Star, ChevronRight } from "lucide-react";
-import heroImage from "@/assets/hero-dashboard.png";
 import Link from "next/link";
 import { Button } from "../_components/ui/button";
 import { Card, CardContent } from "../_components/ui/card";
@@ -41,7 +40,7 @@ const LandingPage = () => {
             />
 
             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link href="/dashboard">
+              <Link href="/auth/sign-up">
                 <Button size="lg" className="shadow-primary/30 group shadow-xl">
                   Começar Gratuitamente
                   <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />

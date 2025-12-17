@@ -85,7 +85,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className={`${poppins.variable}`}>
-      <body className="bg-linear-to-b from-slate-50 to-white">
+      <body className="scroll-smooth bg-linear-to-b from-slate-50 to-white">
         <TRPCReactProvider>
           <AbilityProvider
             user={{
