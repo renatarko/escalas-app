@@ -45,11 +45,11 @@ export const benefits = [
 export const plans = [
   {
     name: "Starter",
-    price: "R$ 9,99",
+    price: "R$ 12,99",
     description: "Para bandas pequenas",
     features: [
       "Até 10 membros",
-      "5 escalas por mês",
+      "4 escalas por mês",
       "Notificações básicas",
       "Suporte por email",
     ],
@@ -57,12 +57,12 @@ export const plans = [
   },
   {
     name: "Pro",
-    price: "R$ 24,99",
+    price: "R$ 17,99",
     period: "/mês",
     description: "Para bandas ativas",
     features: [
       "Membros ilimitados",
-      "Escalas ilimitadas",
+      "10 escalas por mês",
       "WhatsApp automatizado",
       "Relatórios avançados",
       "Suporte prioritário",
