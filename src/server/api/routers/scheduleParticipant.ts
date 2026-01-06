@@ -1,5 +1,6 @@
 import z from "zod";
 import { createTRPCRouter, publicProcedure } from "../trpc";
+import { sendWhatsAppMessage } from "@/server/services/send-whatsapp";
 
 export const scheduleParticipantRouter = createTRPCRouter({
   updateById: publicProcedure
@@ -19,6 +20,7 @@ export const scheduleParticipantRouter = createTRPCRouter({
         const updated = await ctx.db.$transaction(async (tx) => {
           const scheduleParticipant = await tx.scheduleParticipant.update({
             where: { scheduleId_participantId: { participantId, scheduleId } },
+            include: { participant: { select: { whatsapp: true } } },
             data: { confirmed, confirmedAt: new Date() },
           });
 
@@ -29,18 +31,26 @@ export const scheduleParticipantRouter = createTRPCRouter({
             data: { status: "completed" },
           });
 
-          return scheduleParticipant;
-        });
+          await ctx.db.notificationLog.create({
+            data: {
+              scheduleId: scheduleParticipant.scheduleId,
+              scheduleParticipantId: scheduleParticipant.id,
+              participantId: scheduleParticipant.participantId,
+              status: "success",
+              type: "confirmation",
+              message: `Participante ${confirmed ? "confirmou presença" : "confirmou ausência"} via link`,
+            },
+          });
 
-        await ctx.db.notificationLog.create({
-          data: {
-            scheduleId: updated.scheduleId,
-            scheduleParticipantId: updated.id,
-            participantId: updated.participantId,
-            status: "success",
-            type: "confirmation",
-            message: `Participante ${confirmed ? "confirmou presença" : "confirmou ausência"} via link`,
-          },
+          if (scheduleParticipant) {
+            const message = `Recebemos sua *${confirmed ? "confirmação de presença" : "confirmação de ausência"}* com sucesso.`;
+            await sendWhatsAppMessage(
+              scheduleParticipant.participant.whatsapp ?? "",
+              message,
+            );
+          }
+
+          return scheduleParticipant;
         });
 
         return { success: true };
