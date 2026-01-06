@@ -402,7 +402,7 @@ export default function ScheduleForm({
                 )}
               />
 
-              {/* <FormField
+              <FormField
                 control={form.control}
                 name="time"
                 render={({ field }) => (
@@ -419,7 +419,7 @@ export default function ScheduleForm({
                     <FormMessage />
                   </FormItem>
                 )}
-              /> */}
+              />
             </div>
           )}
 
@@ -546,7 +546,7 @@ export default function ScheduleForm({
                 </>
               )}
 
-              {/* <FormField
+              <FormField
                 control={form.control}
                 name="time"
                 render={({ field }) => (
@@ -563,7 +563,7 @@ export default function ScheduleForm({
                     <FormMessage />
                   </FormItem>
                 )}
-              /> */}
+              />
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
