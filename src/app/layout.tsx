@@ -9,6 +9,8 @@ import { SessionProvider } from "next-auth/react";
 import { auth } from "@/server/auth";
 import { AbilityProvider } from "@/lib/utils/abilityContext";
 import { getCurrentMembership } from "@/lib/auth/ability";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 
 const metadataObject = {
   url: "https://escalasapp.vercel.app",
@@ -101,6 +103,8 @@ export default async function RootLayout({
             <Toaster />
           </AbilityProvider>
         </TRPCReactProvider>
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
