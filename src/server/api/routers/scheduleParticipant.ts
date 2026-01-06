@@ -33,20 +33,22 @@ export const scheduleParticipantRouter = createTRPCRouter({
 
           await ctx.db.notificationLog.create({
             data: {
-              scheduleId: updated.scheduleId,
-              scheduleParticipantId: updated.id,
-              participantId: updated.participantId,
+              scheduleId: scheduleParticipant.scheduleId,
+              scheduleParticipantId: scheduleParticipant.id,
+              participantId: scheduleParticipant.participantId,
               status: "success",
               type: "confirmation",
               message: `Participante ${confirmed ? "confirmou presença" : "confirmou ausência"} via link`,
             },
           });
 
-          const message = `Recebemos sua *${confirmed ? "confirmação de presença" : "confirmação de ausência"}* com sucesso.`;
-          await sendWhatsAppMessage(
-            scheduleParticipant.participant.whatsapp ?? "",
-            message,
-          );
+          if (scheduleParticipant) {
+            const message = `Recebemos sua *${confirmed ? "confirmação de presença" : "confirmação de ausência"}* com sucesso.`;
+            await sendWhatsAppMessage(
+              scheduleParticipant.participant.whatsapp ?? "",
+              message,
+            );
+          }
 
           return scheduleParticipant;
         });

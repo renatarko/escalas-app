@@ -13,7 +13,7 @@ import { Button } from "../../ui/button";
 import { api } from "@/trpc/react";
 import { useState } from "react";
 import { SuccessCard } from "./success-card";
-import { Spinner } from "../../ui/spinner";
+import { toast } from "sonner";
 
 type ActionCardProps = {
   participantId: string;
@@ -40,6 +40,9 @@ export const ActionCard = ({
   const updateConfirmation = api.scheduleParticipant.updateById.useMutation({
     async onSuccess() {
       await utils.pendingConfirmation.getById.invalidate();
+    },
+    onError() {
+      toast.error("Não foi possível registrar confirmação, tente novamente");
     },
   });
 
@@ -93,7 +96,6 @@ export const ActionCard = ({
             disabled={updateConfirmation.isPending}
             onClick={() => updateScheduleParticipant(false)}
           >
-            {updateConfirmation.isPending && <Spinner />}
             Não
           </Button>
           <Button
@@ -101,7 +103,6 @@ export const ActionCard = ({
             disabled={updateConfirmation.isPending}
             onClick={() => updateScheduleParticipant(true)}
           >
-            {updateConfirmation.isPending && <Spinner />}
             Sim
           </Button>
         </CardFooter>
