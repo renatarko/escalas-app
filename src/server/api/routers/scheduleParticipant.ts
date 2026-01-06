@@ -12,13 +12,14 @@ export const scheduleParticipantRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { scheduleId, participantId, pendingConfirmationId } = input;
+      const { scheduleId, participantId, pendingConfirmationId, confirmed } =
+        input;
 
       try {
         const updated = await ctx.db.$transaction(async (tx) => {
           const scheduleParticipant = await tx.scheduleParticipant.update({
             where: { scheduleId_participantId: { participantId, scheduleId } },
-            data: { confirmed: true, confirmedAt: new Date() },
+            data: { confirmed, confirmedAt: new Date() },
           });
 
           await tx.pendingConfirmation.update({
@@ -38,11 +39,11 @@ export const scheduleParticipantRouter = createTRPCRouter({
             participantId: updated.participantId,
             status: "success",
             type: "confirmation",
-            message: "Participante confirmou presença via link",
+            message: `Participante ${confirmed ? "confirmou presença" : "confirmou ausência"} via link`,
           },
         });
 
-        return { success: updated.confirmed };
+        return { success: true };
       } catch (error) {
         console.error("Erro ao confirmar participação", error);
 
