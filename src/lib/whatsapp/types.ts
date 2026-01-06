@@ -1,5 +1,4 @@
 // Tipos para Evolution API
-
 export interface EvolutionInstance {
   instanceName: string;
   instanceId: string;
@@ -21,77 +20,53 @@ export interface EvolutionConnectionState {
   state: "open" | "close" | "connecting";
 }
 
-export interface EvolutionSendTextMessage {
-  number: string;
-  text: string;
-  delay?: number;
-  linkPreview?: boolean;
-}
-
-export interface EvolutionSendMessageResponse {
-  key: {
-    remoteJid: string;
-    fromMe: boolean;
-    id: string;
-  };
-  message: {
-    extendedTextMessage?: {
-      text: string;
-    };
-    conversation?: string;
-  };
-  messageTimestamp: string;
-  status: string;
-}
-
-export interface EvolutionWebhookMessage {
-  event: string;
+interface Evolution {
   instance: string;
-  data: {
-    key: {
-      remoteJid: string;
-      fromMe: boolean;
-      id: string;
-    };
-    pushName?: string;
-    message?: {
-      conversation?: string;
-      extendedTextMessage?: {
-        text: string;
-      };
-    };
-    messageTimestamp?: number;
-  };
+  serverUrl: string;
+  apikey: string;
+}
+
+interface AppCredentials {
+  webhookUrl: string;
+  xApiKey: string;
+}
+
+interface Schedule {
+  id: string;
+  date: Date;
+  name: string;
+}
+
+interface Member {
+  id: string;
+  name: string;
+  whatsapp: string;
+  instrument: string | null;
+  confirmed: boolean | null;
 }
 
 export interface ScheduleNotificationPayload {
-  scheduleId: string;
-  bandName: string;
-  scheduleName: string;
-  date: string;
-  time?: string;
-  participants: {
-    scheduleParticipantId: string;
-    userId: string;
-    name: string;
-    whatsapp: string;
-    instrument: string;
-  }[];
+  evolution: Evolution;
+  app: AppCredentials;
+  schedule: Schedule;
+  member: Member;
+  message: string;
+}
+
+export interface ScheduleNotificationInBatchPayload {
+  evolution: Evolution;
+  app: AppCredentials;
+  schedule: Schedule;
+  members: Member[];
+  message?: string;
 }
 
 export interface ScheduleParticipantNotificationPayload {
-  schedule: {
-    id: string;
-    date: Date;
-    name: string;
-  };
-  member: {
-    id: string;
-    name: string;
-    whatsapp: string;
-    instrument: string;
-    confirmed: boolean | null;
-  };
+  evolution: Evolution;
+  app: AppCredentials;
+  schedule: Schedule;
+  member: Member;
+  message?: string;
 }
 
 export interface WhatsAppNotificationResult {

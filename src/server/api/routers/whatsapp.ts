@@ -1,16 +1,16 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
-import { whatsappService, evolutionAPI } from "@/lib/whatsapp";
 import { inngest } from "@/inngest/client";
-import { processScheduleNotifications } from "@/server/services/whatsapp-notifications";
 import { EventsName } from "@/inngest/functions/eventsName";
+import { getConnectionState, getQRCode } from "@/lib/whatsapp/service";
+import { evolutionAPI } from "@/lib/whatsapp";
 
 export const whatsappRouter = createTRPCRouter({
   // Obter status da conexão
   getConnectionStatus: protectedProcedure.query(async () => {
     try {
-      const state = await whatsappService.getConnectionState();
+      const state = await getConnectionState();
       return {
         connected: state.state === "open",
         state: state.state,
@@ -28,7 +28,7 @@ export const whatsappRouter = createTRPCRouter({
   // Obter QR Code para conexão
   getQRCode: protectedProcedure.query(async () => {
     try {
-      const qrCode = await whatsappService.getQRCode();
+      const qrCode = await getQRCode();
       return {
         success: true,
         qrCode: qrCode.base64,
@@ -89,42 +89,6 @@ export const whatsappRouter = createTRPCRouter({
     }
   }),
 
-  // Enviar mensagem de teste
-  sendTestMessage: protectedProcedure
-    .input(
-      z.object({
-        number: z.string().min(10, "Número inválido"),
-        message: z.string().min(1, "Mensagem não pode estar vazia"),
-      }),
-    )
-    .mutation(async ({ input }) => {
-      try {
-        const result = await whatsappService.sendMessage(
-          input.number,
-          input.message,
-        );
-
-        if (!result.success) {
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: result.error ?? "Erro ao enviar mensagem",
-          });
-        }
-
-        return {
-          success: true,
-          messageId: result.messageId,
-        };
-      } catch (error) {
-        if (error instanceof TRPCError) throw error;
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message:
-            error instanceof Error ? error.message : "Erro ao enviar mensagem",
-        });
-      }
-    }),
-
   // Verificar se número tem WhatsApp
   checkNumber: protectedProcedure
     .input(z.object({ number: z.string() }))
@@ -170,7 +134,7 @@ export const whatsappRouter = createTRPCRouter({
         const result = await inngest.send({
           name: EventsName["batch-n8n"],
           data: {
-            scheduleParticipants: scheduleParticipants.map(({ id }) => id),
+            scheduleParticipantsId: scheduleParticipants.map(({ id }) => id),
           },
         });
 
@@ -320,7 +284,7 @@ export const whatsappRouter = createTRPCRouter({
         const result = await inngest.send({
           name: EventsName["unique-n8n"],
           data: {
-            scheduleParticipant: scheduleParticipantId?.id,
+            scheduleParticipantId: scheduleParticipantId?.id,
           },
         });
 

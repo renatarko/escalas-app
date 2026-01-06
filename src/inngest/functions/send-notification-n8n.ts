@@ -1,10 +1,7 @@
 import { processScheduleAndParticipantNotifications } from "@/server/services/whatsapp-notifications";
 import { inngest } from "../client";
-import { env } from "@/env";
-import { NonRetriableError } from "inngest";
-import type { ScheduleNotificationPayload } from "./types";
-import { generateScheduleNotificationMessage } from "@/lib/whatsapp/whatsapp-service";
 import { db } from "@/server/db";
+import { callSenderWorkflow } from "@/lib/n8n/service";
 
 export const sendNotificationN8N = inngest.createFunction(
   {
@@ -14,36 +11,54 @@ export const sendNotificationN8N = inngest.createFunction(
   },
   { event: "n8n/notification.send" },
   async ({ event, step }) => {
-    const { scheduleParticipant } = event.data as {
-      scheduleParticipant: string;
+    const { scheduleParticipantId, type = "notification" } = event.data as {
+      scheduleParticipantId: string;
+      type?: "notification" | "reminder" | "cancellation" | "update";
     };
 
     const scheduleByParticipantInfo = await step.run(
       "fetch-schedule-participant-info",
       async () => {
         try {
-          const info = await processScheduleAndParticipantNotifications({
-            scheduleParticipant,
+          const payload = await processScheduleAndParticipantNotifications({
+            scheduleParticipantId,
+            type,
           });
 
-          // Validar dados retornados
-          if (
-            !info.schedule?.id ||
-            !info.member?.id ||
-            !info.member?.whatsapp
-          ) {
-            throw new NonRetriableError(
-              "Dados inválidos: schedule, member ou whatsapp ausentes",
-            );
-          }
-
-          return info;
+          return payload;
         } catch (error) {
           console.error("Erro ao buscar informações:", error);
           throw error;
         }
       },
     );
+
+    const n8nResponse = await step.run("call-n8n-webhook", async () => {
+      try {
+        const response = await callSenderWorkflow(scheduleByParticipantInfo);
+
+        if (response.message === "Workflow was started") {
+          await db.scheduleParticipant.update({
+            where: { id: scheduleParticipantId },
+            data: { notificationSent: true, notificationSentAt: new Date() },
+          });
+        }
+        return response;
+      } catch (error) {
+        await db.notificationLog.create({
+          data: {
+            scheduleId: scheduleByParticipantInfo.schedule.id,
+            scheduleParticipantId,
+            participantId: scheduleByParticipantInfo.member.id,
+            status: "error",
+            type: "notification",
+            error:
+              error instanceof Error ? error.message : "Erro ao enviar webhook",
+          },
+        });
+        throw error;
+      }
+    });
 
     const pendingId = await step.run("save-pending-confirmation", async () => {
       try {
@@ -68,101 +83,12 @@ export const sendNotificationN8N = inngest.createFunction(
       }
     });
 
-    const payload: ScheduleNotificationPayload = await step.run(
-      "prepare-payload",
-      async () => {
-        // TODO: Buscar dados da igreja/banda do banco para pegar serverUrl e apikey
-        // const band = await db.band.findUnique({
-        //   where: { id: scheduleByParticipantInfo.schedule.bandId },
-        //   select: { evolutionServerUrl: true, evolutionApiKey: true }
-        // });
-        const message = generateScheduleNotificationMessage({
-          bandName: scheduleByParticipantInfo.schedule.name,
-          date: scheduleByParticipantInfo.schedule.date,
-          scheduleName: scheduleByParticipantInfo.schedule.name,
-          participantName: scheduleByParticipantInfo.member.name,
-          scheduleParticipantId: scheduleParticipant,
-          pendingConfirmationId: pendingId,
-          instrument: scheduleByParticipantInfo.member.instrument,
-        });
-
-        return {
-          evolution: {
-            instance: env.EVOLUTION_INSTANCE_NAME,
-            serverUrl: env.EVOLUTION_API_URL, // TODO: usar band.evolutionServerUrl
-            apikey: "DB678B3D5F36-47D6-BC95-C7FD516D0140", // TODO: usar band.evolutionApiKey
-          },
-          app: {
-            webhookUrl: env.NEXT_PUBLIC_API_URL,
-            xApiKey: env.EVOLUTION_API_KEY,
-          },
-          ...scheduleByParticipantInfo,
-          message,
-        };
-      },
-    );
-
-    const n8nResponse = await step.run("call-n8n-webhook", async () => {
-      try {
-        const n8nUrl = env.N8N_BASE_URL.endsWith("/")
-          ? `${env.N8N_BASE_URL}webhook/whatsapp-confirmation`
-          : `${env.N8N_BASE_URL}/webhook/whatsapp-confirmation`;
-
-        const response = await fetch(n8nUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": env.EVOLUTION_API_KEY,
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(
-            `N8N webhook falhou: ${response.status} - ${errorText}`,
-          );
-        }
-
-        const result = await response.json();
-        await db.scheduleParticipant.update({
-          where: { id: scheduleParticipant },
-          data: { notificationSent: true, notificationSentAt: new Date() },
-        });
-
-        console.log("N8N webhook success:", result);
-        return result;
-      } catch (error) {
-        console.error("Erro ao chamar N8N webhook:", error);
-        await db.notificationLog.create({
-          data: {
-            scheduleId: scheduleByParticipantInfo.schedule.id,
-            scheduleParticipantId: scheduleParticipant,
-            participantId: scheduleByParticipantInfo.member.id,
-            status: "error",
-            type: "notification",
-            error:
-              error instanceof Error ? error.message : "Erro ao enviar webhook",
-          },
-        });
-        throw error;
-      }
-    });
-
-    await step.run("log-notification-sent", async () => {
-      console.log("Notificação enviada com sucesso:", {
-        scheduleParticipant,
-        scheduleId: payload.schedule.id,
-        memberId: payload.member.id,
-        whatsapp: payload.member.whatsapp,
-        timestamp: new Date().toISOString(),
-      });
-
+    await step.run("create-log-notification-sent", async () => {
       await db.notificationLog.create({
         data: {
-          scheduleId: payload.schedule.id,
-          scheduleParticipantId: scheduleParticipant,
-          participantId: payload.member.id,
+          scheduleId: scheduleByParticipantInfo.schedule.id,
+          scheduleParticipantId,
+          participantId: scheduleByParticipantInfo.member.id,
           status: "success",
           type: "notification",
           message: `Messagem de confirmação enviada com sucesso`,
@@ -172,21 +98,33 @@ export const sendNotificationN8N = inngest.createFunction(
 
     return {
       success: true,
-      type: "notification",
-      scheduleParticipant,
+      type,
+      scheduleParticipantId,
+      pendingId,
       n8nResponse,
     };
   },
 );
 
-// // Função auxiliar para disparar o evento (use no seu código)
-// export async function triggerScheduleNotification(
-//   scheduleParticipantId: string,
-// ) {
-//   await inngest.send({
-//     name: "n8n/notification.send",
-//     data: {
-//       scheduleParticipant: scheduleParticipantId,
-//     },
-//   });
-// }
+export const sendScheduleReminder = inngest.createFunction(
+  {
+    id: "send-schedule-reminder",
+    name: "Send Schedule WhatsApp Reminder",
+    retries: 3,
+  },
+  { event: "schedule/reminder.send" },
+  async ({ event, step }) => {
+    const { scheduleParticipantId } = event.data as {
+      scheduleParticipantId: string;
+    };
+
+    // Reutiliza a lógica de notificação com tipo "reminder"
+    return step.invoke("send-reminder", {
+      function: sendNotificationN8N,
+      data: {
+        scheduleParticipantId,
+        type: "reminder",
+      },
+    });
+  },
+);

@@ -1,12 +1,16 @@
 import { db } from "@/server/db";
-import { whatsappService } from "@/lib/whatsapp";
 import { SetInstrument } from "@/lib/utils/setInstrument";
 import type { Instrument } from "@/lib/types";
 import type {
-  ScheduleNotificationPayload,
+  ScheduleNotificationInBatchPayload,
   ScheduleParticipantNotificationPayload,
   WhatsAppNotificationResult,
 } from "@/lib/whatsapp";
+import { env } from "@/env";
+import {
+  generateScheduleNotificationMessage,
+  generateScheduleReminderMessage,
+} from "@/lib/whatsapp/service";
 
 async function logNotificationResults({
   scheduleId,
@@ -96,6 +100,7 @@ export async function processScheduleNotifications({
       whatsapp: p.participant.whatsapp!,
       instrumentLabel:
         SetInstrument(p.instrument as Instrument).label ?? p.instrument,
+      confirmed: p.confirmed,
     }));
 
   if (participantsWithWhatsapp.length === 0) {
@@ -108,28 +113,38 @@ export async function processScheduleNotifications({
     };
   }
 
-  const payload: ScheduleNotificationPayload = {
-    scheduleId: schedule.id,
-    bandName: schedule.band.name,
-    scheduleName: schedule.name ?? "Escala",
-    date: new Date(schedule.date).toISOString(),
-    time: schedule.time ? new Date(schedule.time).toISOString() : undefined,
-    participants: participantsWithWhatsapp.map((participant) => ({
-      scheduleParticipantId: participant.scheduleParticipantId,
-      userId: participant.participantId,
+  const payload: ScheduleNotificationInBatchPayload = {
+    evolution: {
+      instance: env.EVOLUTION_INSTANCE_NAME,
+      serverUrl: env.EVOLUTION_API_URL,
+      apikey: "DB678B3D5F36-47D6-BC95-C7FD516D0140",
+    },
+    app: {
+      webhookUrl: env.NEXT_PUBLIC_API_URL,
+      xApiKey: env.EVOLUTION_API_KEY,
+    },
+    schedule: {
+      id: schedule.id,
+      name: schedule.name ?? "Escala",
+      date: schedule.date,
+    },
+    members: participantsWithWhatsapp.map((participant) => ({
+      id: participant.participantId,
       name: participant.name,
+      scheduleParticipantId: participant.scheduleParticipantId,
       whatsapp: participant.whatsapp,
       instrument: participant.instrumentLabel,
+      confirmed: participant.confirmed,
     })),
   };
 
-  let results: WhatsAppNotificationResult[] = [];
+  const results: WhatsAppNotificationResult[] = [];
 
-  if (type === "reminder") {
-    results = await whatsappService.sendScheduleReminders(payload);
-  } else {
-    results = await whatsappService.sendScheduleNotifications(payload);
-  }
+  // if (type === "reminder") {
+  //   results = await sendScheduleReminders(payload);
+  // } else {
+  //   results = await sendScheduleNotifications(payload);
+  // }
 
   const participantMap = new Map(
     participantsWithWhatsapp.map((participant) => [
@@ -178,15 +193,18 @@ export async function processScheduleNotifications({
 }
 
 type ProcessScheduleAndParticipantNotificationsParams = {
-  scheduleParticipant: string;
+  scheduleParticipantId: string;
+  type?: "notification" | "reminder" | "cancellation" | "update";
 };
 
 export async function processScheduleAndParticipantNotifications({
-  scheduleParticipant,
+  scheduleParticipantId,
+  type,
 }: ProcessScheduleAndParticipantNotificationsParams): Promise<ScheduleParticipantNotificationPayload> {
   const scheduleByParticipant = await db.scheduleParticipant.findUnique({
-    where: { id: scheduleParticipant },
+    where: { id: scheduleParticipantId }, // alterar para buscar do participant_id e schedule_id , TODO no front, passar os parametros corretos
     select: {
+      id: true,
       participant: {
         select: {
           id: true,
@@ -208,10 +226,36 @@ export async function processScheduleAndParticipantNotifications({
   });
 
   if (!scheduleByParticipant) {
-    throw new Error(`Schedule not found: ${scheduleByParticipant}`);
+    throw new Error(`ScheduleParticipant not found: ${scheduleByParticipant}`);
+  }
+
+  const { schedule, participant, instrument } = scheduleByParticipant;
+  const messagePayload = {
+    participantName: participant.name ?? "",
+    scheduleName: schedule.name ?? "",
+    date: schedule.date,
+    instrument,
+    scheduleParticipantId: scheduleByParticipant.id,
+    pendingConfirmationId: "",
+  };
+
+  let message = "";
+  if (type === "notification") {
+    message = generateScheduleNotificationMessage(messagePayload);
+  } else {
+    message = generateScheduleReminderMessage(messagePayload);
   }
 
   const payload: ScheduleParticipantNotificationPayload = {
+    evolution: {
+      instance: env.EVOLUTION_INSTANCE_NAME,
+      serverUrl: env.EVOLUTION_API_URL,
+      apikey: "DB678B3D5F36-47D6-BC95-C7FD516D0140",
+    },
+    app: {
+      webhookUrl: env.NEXT_PUBLIC_API_URL,
+      xApiKey: env.EVOLUTION_API_KEY,
+    },
     schedule: {
       id: scheduleByParticipant.schedule.id,
       name: scheduleByParticipant.schedule.name ?? "",
@@ -226,6 +270,7 @@ export async function processScheduleAndParticipantNotifications({
         SetInstrument(scheduleByParticipant.instrument as Instrument).label ??
         "",
     },
+    message,
   };
 
   return payload;

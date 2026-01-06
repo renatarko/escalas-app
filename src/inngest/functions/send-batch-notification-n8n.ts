@@ -3,7 +3,8 @@ import { inngest } from "../client";
 import { processScheduleAndParticipantNotifications } from "@/server/services/whatsapp-notifications";
 import { env } from "@/env";
 import { db } from "@/server/db";
-import { generateScheduleNotificationMessage } from "@/lib/whatsapp/whatsapp-service";
+import { generateScheduleNotificationMessage } from "@/lib/whatsapp/service";
+import { callSenderWorkflow } from "@/lib/n8n/service";
 
 export const sendBatchNotificationN8N = inngest.createFunction(
   {
@@ -13,13 +14,13 @@ export const sendBatchNotificationN8N = inngest.createFunction(
   },
   { event: "n8n/notification.send.batch" },
   async ({ event, step }) => {
-    const { scheduleParticipants } = event.data as {
-      scheduleParticipants: string[];
+    const { scheduleParticipantsId } = event.data as {
+      scheduleParticipantsId: string[];
     };
 
     if (
-      !Array.isArray(scheduleParticipants) ||
-      scheduleParticipants.length === 0
+      !Array.isArray(scheduleParticipantsId) ||
+      scheduleParticipantsId.length === 0
     ) {
       throw new NonRetriableError("Nenhum scheduleParticipant fornecido");
     }
@@ -27,9 +28,9 @@ export const sendBatchNotificationN8N = inngest.createFunction(
     // Processamento em lote
     const results = [];
 
-    for (const scheduleParticipant of scheduleParticipants) {
+    for (const scheduleParticipantId of scheduleParticipantsId) {
       const result = await step.run(
-        `process-${scheduleParticipant}`,
+        `process-${scheduleParticipantId}`,
         async () => {
           let scheduleByParticipantInfo: Awaited<
             ReturnType<typeof processScheduleAndParticipantNotifications>
@@ -39,7 +40,7 @@ export const sendBatchNotificationN8N = inngest.createFunction(
             // 1. Buscar info
             scheduleByParticipantInfo =
               await processScheduleAndParticipantNotifications({
-                scheduleParticipant,
+                scheduleParticipantId,
               });
 
             if (
@@ -48,7 +49,7 @@ export const sendBatchNotificationN8N = inngest.createFunction(
               !scheduleByParticipantInfo.member?.whatsapp
             ) {
               throw new NonRetriableError(
-                `Dados inválidos para participante ${scheduleParticipant}`,
+                `Dados inválidos para participante ${scheduleParticipantId}`,
               );
             }
 
@@ -62,78 +63,41 @@ export const sendBatchNotificationN8N = inngest.createFunction(
               },
             });
 
-            // 2. Criar payload
-            // const payload: ScheduleNotificationPayload = {
-            //   evolution: {
-            //     instance: env.EVOLUTION_INSTANCE_NAME,
-            //     serverUrl: env.EVOLUTION_API_URL,
-            //     apikey: "DB678B3D5F36-47D6-BC95-C7FD516D0140",
-            //   },
-            //   app: {
-            //     webhookUrl: env.NEXT_PUBLIC_API_URL,
-            //     xApiKey: env.EVOLUTION_API_KEY,
-            //   },
-            //   ...scheduleByParticipantInfo,
-            // };
-
             if (!pendingResponse.id) {
               throw new Error(`Erro ao salvar pending`);
             }
 
             const message = generateScheduleNotificationMessage({
-              bandName: scheduleByParticipantInfo.schedule.name,
               date: scheduleByParticipantInfo.schedule.date,
               scheduleName: scheduleByParticipantInfo.schedule.name,
               participantName: scheduleByParticipantInfo.member.name,
-              scheduleParticipantId: scheduleParticipant,
+              scheduleParticipantId,
               pendingConfirmationId: pendingResponse.id,
               instrument: scheduleByParticipantInfo.member.instrument,
             });
 
             const payload = {
-              evolution: {
-                instance: env.EVOLUTION_INSTANCE_NAME,
-                serverUrl: env.EVOLUTION_API_URL,
-                apikey: "DB678B3D5F36-47D6-BC95-C7FD516D0140",
-              },
-              app: {
-                webhookUrl: env.NEXT_PUBLIC_API_URL,
-                xApiKey: env.EVOLUTION_API_KEY,
-              },
               ...scheduleByParticipantInfo,
               message,
             };
 
             // 4. Enviar para o webhook do n8n
-            const n8nUrl = env.N8N_BASE_URL.endsWith("/")
-              ? `${env.N8N_BASE_URL}webhook/whatsapp-confirmation`
-              : `${env.N8N_BASE_URL}/webhook/whatsapp-confirmation`;
+            const response = await callSenderWorkflow(payload);
 
-            const webhook = await fetch(n8nUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-api-key": env.EVOLUTION_API_KEY,
-              },
-              body: JSON.stringify(payload),
-            });
-
-            if (!webhook.ok) {
-              const errText = await webhook.text();
-              throw new Error(`N8N falhou: ${webhook.status} - ${errText}`);
+            if (response.message === "Workflow was started") {
+              await db.scheduleParticipant.update({
+                where: { id: scheduleParticipantId },
+                data: {
+                  notificationSent: true,
+                  notificationSentAt: new Date(),
+                },
+              });
             }
-
-            const webhookResult = await webhook.json();
-
-            console.log("Mensagem enviada:", {
-              scheduleParticipant,
-              whatsapp: payload.member.whatsapp,
-            });
 
             await db.notificationLog.create({
               data: {
                 scheduleId: scheduleByParticipantInfo.schedule.id,
-                scheduleParticipantId: scheduleParticipant,
+                scheduleParticipantId,
                 participantId: scheduleByParticipantInfo.member.id,
                 status: "success",
                 type: "notification",
@@ -143,17 +107,17 @@ export const sendBatchNotificationN8N = inngest.createFunction(
 
             return {
               success: true,
-              scheduleParticipant,
-              response: webhookResult,
+              scheduleParticipantId,
+              response,
             };
-          } catch (error: any) {
+          } catch (error: unknown) {
             console.error("Erro ao enviar mensagem:", error);
 
             if (scheduleByParticipantInfo?.schedule?.id) {
               await db.notificationLog.create({
                 data: {
                   scheduleId: scheduleByParticipantInfo.schedule.id,
-                  scheduleParticipantId: scheduleParticipant,
+                  scheduleParticipantId,
                   participantId: scheduleByParticipantInfo?.member?.id,
                   status: "error",
                   type: "notification",
@@ -164,7 +128,7 @@ export const sendBatchNotificationN8N = inngest.createFunction(
 
             return {
               success: false,
-              scheduleParticipant,
+              scheduleParticipantId,
               error: error.message ?? "Erro desconhecido",
             };
           }
@@ -175,7 +139,7 @@ export const sendBatchNotificationN8N = inngest.createFunction(
     }
 
     return {
-      total: scheduleParticipants.length,
+      total: scheduleParticipantsId.length,
       success: results.filter((r) => r.success).length,
       errors: results.filter((r) => !r.success),
       items: results,
