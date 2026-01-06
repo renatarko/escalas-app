@@ -24,7 +24,7 @@ export const createScheduleFormSchema = z
     date: z.date().optional(),
     startDate: z.date().optional(),
     endDate: z.date().optional(),
-    time: z.string().optional(),
+    // time: z.string().optional(),
     notes: z.string().optional(),
     participants: z
       .array(participantRowSchema)
@@ -51,7 +51,7 @@ export const createScheduleFormSchema = z
       daysOfWeek,
       endDate,
       date,
-      time,
+      // time,
     } = data;
 
     if (recurrenceType === "SINGLE") {
@@ -62,13 +62,13 @@ export const createScheduleFormSchema = z
           path: ["date"],
         });
       }
-      if (!time) {
-        ctx.addIssue({
-          code: "custom",
-          message: "Informe um horário",
-          path: ["time"],
-        });
-      }
+      // if (!time) {
+      //   ctx.addIssue({
+      //     code: "custom",
+      //     message: "Informe um horário",
+      //     path: ["time"],
+      //   });
+      // }
       return;
     }
 

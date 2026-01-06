@@ -37,9 +37,26 @@ export const notificationLogRouter = createTRPCRouter({
 
       return ctx.db.notificationLog.findMany({
         where: {
-          scheduleId: scheduleId
-            ? scheduleId
-            : { in: schedules.map((schedule) => schedule.id) },
+          scheduleId: scheduleId ?? {
+            in: schedules.map((schedule) => schedule.id),
+          },
+        },
+        include: {
+          scheduleParticipant: {
+            select: {
+              id: true,
+              participant: {
+                select: {
+                  name: true,
+                },
+              },
+              schedule: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
         },
         orderBy: { createdAt: "desc" },
         take: limit,

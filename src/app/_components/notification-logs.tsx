@@ -48,6 +48,7 @@ export function NotificationLogs({ scheduleId }: NotificationLogsProps) {
               >
                 <div className="flex items-center justify-between">
                   <Badge
+                    className="text-xs"
                     variant={
                       log.status === "success" ? "default" : "destructive"
                     }
@@ -63,6 +64,10 @@ export function NotificationLogs({ scheduleId }: NotificationLogsProps) {
                 <div className="mt-2 text-sm">
                   <p className="text-foreground font-semibold capitalize">
                     {log.type}
+                  </p>
+                  <p className="text-primary text-sm">
+                    {log.participant}{" "}
+                    <b className="text-xs">({log.schedule})</b>
                   </p>
                   {log.message && (
                     <p className="text-muted-foreground text-xs wrap-break-word">

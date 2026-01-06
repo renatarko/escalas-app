@@ -98,7 +98,6 @@ export default function ScheduleForm({
       participants: [],
       date: undefined,
       recurrenceType: "SINGLE",
-      time: undefined,
       notes: "",
       daysOfWeek: undefined,
       weekOfMonth: undefined,
@@ -117,7 +116,6 @@ export default function ScheduleForm({
   const handleRecurringChange = () => {
     form.clearErrors();
     form.resetField("date");
-    form.resetField("time");
     form.resetField("daysOfWeek");
     form.resetField("weekOfMonth");
     form.resetField("frequency");
@@ -182,7 +180,6 @@ export default function ScheduleForm({
 
   const handleReset = () => {
     form.clearErrors();
-    form.resetField("time");
     form.reset();
     setPreviewStats({ defined: 0, pending: 0, total: 0 });
   };
@@ -401,25 +398,6 @@ export default function ScheduleForm({
                   </FormItem>
                 )}
               />
-
-              <FormField
-                control={form.control}
-                name="time"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Horário</FormLabel>
-                    <FormControl>
-                      <Input
-                        value={field.value}
-                        onChange={field.onChange}
-                        type="time"
-                        className="w-full"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
           )}
 
@@ -545,25 +523,6 @@ export default function ScheduleForm({
                   />
                 </>
               )}
-
-              <FormField
-                control={form.control}
-                name="time"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Horário</FormLabel>
-                    <FormControl>
-                      <Input
-                        value={field.value}
-                        onChange={field.onChange}
-                        type="time"
-                        className="w-full"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField

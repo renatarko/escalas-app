@@ -98,6 +98,7 @@ model User {
   scheduleParticipants     ScheduleParticipant[]
   schedulesCreated         Schedule[]
   pendingConfirmations     PendingConfirmation[]
+  notificationLogs         NotificationLog[]
 
   @@map("users")
 }
@@ -193,6 +194,7 @@ model Schedule {
   createdBy            User                  @relation(fields: [createdById], references: [id])
   recurrenceConfig     RecurrenceConfig?     @relation(fields: [recurrenceGroupId], references: [id])
   pendingConfirmations PendingConfirmation[]
+  notificationLogs     NotificationLog[]
 
   @@index([date])
   @@index([bandId]) // NOVO
@@ -237,19 +239,20 @@ model RecurrenceParticipant {
 }
 
 model ScheduleParticipant {
-  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
-  scheduleId         String    @map("schedule_id") @db.ObjectId
-  participantId      String    @map("participant_id") @db.ObjectId
+  id                 String            @id @default(auto()) @map("_id") @db.ObjectId
+  scheduleId         String            @map("schedule_id") @db.ObjectId
+  participantId      String            @map("participant_id") @db.ObjectId
   instrument         String
   confirmed          Boolean?
   justification      String?
-  notificationSent   Boolean   @default(false) @map("notification_sent")
-  notificationSentAt DateTime? @map("notification_sent_at")
-  confirmedAt        DateTime? @map("confirmed_at")
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
-  participant        User      @relation(fields: [participantId], references: [id], onDelete: Cascade)
-  schedule           Schedule  @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  notificationSent   Boolean           @default(false) @map("notification_sent")
+  notificationSentAt DateTime?         @map("notification_sent_at")
+  confirmedAt        DateTime?         @map("confirmed_at")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+  participant        User              @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  schedule           Schedule          @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  notificationLogs   NotificationLog[]
 
   @@unique([scheduleId, participantId])
   @@index([scheduleId])
@@ -284,6 +287,10 @@ model NotificationLog {
   message               String?
   error                 String?
   createdAt             DateTime @default(now()) @map("created_at")
+
+  schedule            Schedule?            @relation(fields: [scheduleId], references: [id])
+  participant         User?                @relation(fields: [participantId], references: [id])
+  scheduleParticipant ScheduleParticipant? @relation(fields: [scheduleParticipantId], references: [id])
 
   @@index([scheduleId])
   @@map("notification_logs")
