@@ -2,7 +2,6 @@ import { db } from "@/server/db";
 import { SetInstrument } from "@/lib/utils/setInstrument";
 import type { Instrument } from "@/lib/types";
 import type {
-  ScheduleNotificationInBatchPayload,
   ScheduleParticipantNotificationPayload,
   WhatsAppNotificationResult,
 } from "@/lib/whatsapp";
@@ -113,38 +112,7 @@ export async function processScheduleNotifications({
     };
   }
 
-  const payload: ScheduleNotificationInBatchPayload = {
-    evolution: {
-      instance: env.EVOLUTION_INSTANCE_NAME,
-      serverUrl: env.EVOLUTION_API_URL,
-      apikey: "DB678B3D5F36-47D6-BC95-C7FD516D0140",
-    },
-    app: {
-      webhookUrl: env.NEXT_PUBLIC_API_URL,
-      xApiKey: env.EVOLUTION_API_KEY,
-    },
-    schedule: {
-      id: schedule.id,
-      name: schedule.name ?? "Escala",
-      date: schedule.date,
-    },
-    members: participantsWithWhatsapp.map((participant) => ({
-      id: participant.participantId,
-      name: participant.name,
-      scheduleParticipantId: participant.scheduleParticipantId,
-      whatsapp: participant.whatsapp,
-      instrument: participant.instrumentLabel,
-      confirmed: participant.confirmed,
-    })),
-  };
-
   const results: WhatsAppNotificationResult[] = [];
-
-  // if (type === "reminder") {
-  //   results = await sendScheduleReminders(payload);
-  // } else {
-  //   results = await sendScheduleNotifications(payload);
-  // }
 
   const participantMap = new Map(
     participantsWithWhatsapp.map((participant) => [
