@@ -1,7 +1,6 @@
 import { NonRetriableError } from "inngest";
 import { inngest } from "../client";
 import { processScheduleAndParticipantNotifications } from "@/server/services/whatsapp-notifications";
-import { env } from "@/env";
 import { db } from "@/server/db";
 import { generateScheduleNotificationMessage } from "@/lib/whatsapp/service";
 import { callSenderWorkflow } from "@/lib/n8n/service";
@@ -14,8 +13,9 @@ export const sendBatchNotificationN8N = inngest.createFunction(
   },
   { event: "n8n/notification.send.batch" },
   async ({ event, step }) => {
-    const { scheduleParticipantsId } = event.data as {
+    const { scheduleParticipantsId, type = "notification" } = event.data as {
       scheduleParticipantsId: string[];
+      type?: "notification" | "reminder";
     };
 
     if (
@@ -41,6 +41,7 @@ export const sendBatchNotificationN8N = inngest.createFunction(
             scheduleByParticipantInfo =
               await processScheduleAndParticipantNotifications({
                 scheduleParticipantId,
+                type,
               });
 
             if (
@@ -100,7 +101,7 @@ export const sendBatchNotificationN8N = inngest.createFunction(
                 scheduleParticipantId,
                 participantId: scheduleByParticipantInfo.member.id,
                 status: "success",
-                type: "notification",
+                type,
                 message: "Messagem de confirmação enviada com sucesso",
               },
             });
@@ -120,7 +121,7 @@ export const sendBatchNotificationN8N = inngest.createFunction(
                   scheduleParticipantId,
                   participantId: scheduleByParticipantInfo?.member?.id,
                   status: "error",
-                  type: "notification",
+                  type,
                   error: error?.message ?? "Erro desconhecido",
                 },
               });
@@ -143,6 +144,82 @@ export const sendBatchNotificationN8N = inngest.createFunction(
       success: results.filter((r) => r.success).length,
       errors: results.filter((r) => !r.success),
       items: results,
+      type,
+    };
+  },
+);
+
+// Cron job para enviar lembretes automáticos (24h antes)
+export const scheduledRemindersCron = inngest.createFunction(
+  {
+    id: "scheduled-reminders",
+    name: "CRON - Send Scheduled Reminders",
+  },
+  { cron: "0 9 * * *" }, // Executa diariamente às 9h da manhã
+  async ({ step }) => {
+    // Buscar escalas de amanhã
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+
+    const dayAfter = new Date(tomorrow);
+    dayAfter.setDate(dayAfter.getDate() + 1);
+
+    const schedules = await step.run("fetch-tomorrow-schedules", async () => {
+      return db.schedule.findMany({
+        where: {
+          date: {
+            gte: tomorrow,
+            lt: dayAfter,
+          },
+          status: "PENDING",
+        },
+        select: {
+          id: true,
+          participants: { select: { participantId: true, scheduleId: true } },
+        },
+      });
+    });
+
+    if (schedules.length === 0) {
+      return { message: "Nenhuma escala para amanhã", sent: 0 };
+    }
+
+    const scheduleParticipantIds = await step.run(
+      "fetch-tomorrow-scheduleParticipantIds",
+      async () => {
+        return db.scheduleParticipant.findMany({
+          where: {
+            scheduleId: { in: schedules.map((sc) => sc.id) },
+          },
+          select: { id: true },
+        });
+      },
+    );
+
+    if (schedules.length === 0) {
+      return { message: "Não há schedule participant ids", sent: 0 };
+    }
+
+    // Enviar lembretes para cada escala
+    const results = await step.run("send-reminders", async () => {
+      const promises = scheduleParticipantIds.map(({ id }) =>
+        inngest.send({
+          name: "n8n/notification.send.batch",
+          data: {
+            scheduleParticipantsId: id,
+            type: "reminder",
+          },
+        }),
+      );
+
+      return Promise.all(promises);
+    });
+
+    return {
+      message: `Lembretes agendados para ${schedules.length} escalas`,
+      scheduleIds: schedules.map((s) => s.id),
+      results,
     };
   },
 );
