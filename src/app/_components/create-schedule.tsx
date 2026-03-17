@@ -59,7 +59,6 @@ export const CreateSchedule = () => {
           bandId: bandId,
           name: data.scaleName,
           date: data.date!,
-          time: data.time,
           participants: participantsPayload,
           notes: data.notes,
         });
@@ -74,7 +73,6 @@ export const CreateSchedule = () => {
           frequency: data.frequency!,
           startDate: data.startDate!,
           endDate: data.endDate!,
-          time: data.time,
           dayOfWeek: data.daysOfWeek ? Number(data.daysOfWeek) : undefined,
           weekOfMonth: data.weekOfMonth ? Number(data.weekOfMonth) : undefined,
           participants: participantsPayload,

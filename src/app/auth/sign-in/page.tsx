@@ -248,12 +248,20 @@ export default function SignIn() {
           </form>
         </Form>
 
-        <Link
-          href="/auth/sign-up"
-          className="text-chart-3 flex justify-center text-sm hover:underline"
-        >
-          Não tem uma conta? Crie uma agora!
-        </Link>
+        <div className="flex flex-col items-center gap-2">
+          <Link
+            href="/auth/forgot-password"
+            className="text-chart-3 text-sm hover:underline"
+          >
+            Esqueci minha senha
+          </Link>
+          <Link
+            href="/auth/sign-up"
+            className="text-chart-3 text-sm hover:underline"
+          >
+            Não tem uma conta? Crie uma agora!
+          </Link>
+        </div>
       </div>
     </div>
   );

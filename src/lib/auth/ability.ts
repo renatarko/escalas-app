@@ -100,6 +100,7 @@ export async function getCurrentMembership() {
       role: userMember.role,
       bandId: firstBand.id,
       userId: userMember.user.id,
+      user: userMember.user,
     };
   } catch (error) {
     console.error(

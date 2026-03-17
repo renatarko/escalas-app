@@ -163,6 +163,8 @@ export const bandRouter = createTRPCRouter({
                   id: true,
                   name: true,
                   email: true,
+                  whatsapp: true,
+                  image: true,
                 },
               },
             },
