@@ -8,7 +8,11 @@ import {
   Calendar1,
   CalendarPlus,
   CalendarRange,
+  ChevronUp,
+  Edit,
   LayoutDashboard,
+  LogOut,
+  User2,
   UserPlus2,
   Users2,
 } from "lucide-react";
@@ -19,6 +23,7 @@ import { isAdmin } from "@/lib/utils/role-checker";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
@@ -27,6 +32,16 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "./ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import { Skeleton } from "./ui/skeleton";
+import { signOut } from "next-auth/react";
 
 type MenuItem = {
   title: string;
@@ -67,7 +82,7 @@ const menuItems: MenuItem[] = [
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { membership } = getCurrentMembership();
+  const { membership, band, isLoading } = getCurrentMembership();
   const isUserAdmin = isAdmin(membership);
 
   const visibleMenuItems = menuItems.filter(
@@ -126,6 +141,57 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      {isLoading ? (
+        <div className="grid flex-1 space-y-2 text-left leading-tight">
+          <Skeleton className="h-4" />
+          <Skeleton className="h-3 w-1/2" />
+        </div>
+      ) : (
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger className="hover:bg-muted-foreground/20 bg-muted flex w-full flex-col justify-start rounded-lg p-2 duration-150">
+                  <p className="flex gap-2 text-sm font-semibold">
+                    <User2 className="size-4" /> {membership?.user?.name}
+                  </p>
+                  <span className="text-muted-foreground truncate text-xs">
+                    {membership?.user.email}
+                  </span>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  sideOffset={10}
+                  side="top"
+                  className="min-w-48"
+                >
+                  <DropdownMenuLabel className="text-xs font-semibold">
+                    Conta
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem>
+                    <Link
+                      href={`/admin/user`}
+                      className={"flex flex-1 items-center gap-2"}
+                    >
+                      <Edit className="size-4" />
+                      <span>Meus Dados</span>
+                    </Link>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    onClick={() =>
+                      signOut({ callbackUrl: "/", redirect: true })
+                    }
+                    variant="destructive"
+                  >
+                    <LogOut className="size-4" />
+                    <span>Sair</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      )}
       <SidebarRail />
     </Sidebar>
   );

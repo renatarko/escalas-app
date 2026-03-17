@@ -18,6 +18,7 @@ export const getMembership = async (
     },
     include: {
       band: true,
+      user: true,
     },
   });
 
