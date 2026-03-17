@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 import { hash } from "bcrypt";
+import { randomUUID } from "node:crypto";
+import { ResetPasswordEmailTemplate } from "@/app/_components/emails/reset-password";
+import { getData, sendEmail } from "@/lib/mailer";
+import { env } from "@/env";
 
 export const userRouter = createTRPCRouter({
   // Listar todos os usuários
@@ -196,4 +200,85 @@ export const userRouter = createTRPCRouter({
       },
     });
   }),
+
+  // Solicitar redefinição de senha
+  requestPasswordReset: publicProcedure
+    .input(z.object({ email: z.string().email() }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.db.user.findUnique({
+        where: { email: input.email },
+        select: { id: true, email: true, password: true },
+      });
+
+      // Retorna sucesso mesmo se email não existe (evita enumeração)
+      if (!user?.password) return { success: true };
+
+      const token = randomUUID();
+      const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+      const identifier = `password-reset:${input.email}`;
+
+      // Remove token anterior se existir
+      await ctx.db.verificationToken.deleteMany({
+        where: { identifier },
+      });
+
+      await ctx.db.verificationToken.create({
+        data: { identifier, token, expires },
+      });
+
+      const baseUrl = env.NEXTAUTH_URL ?? "http://localhost:3000";
+      const resetUrl = `${baseUrl}/auth/reset-password?token=${token}`;
+
+      const emailHtml = await getData(
+        ResetPasswordEmailTemplate({ email: input.email, resetUrl }),
+      );
+
+      await sendEmail(
+        input.email,
+        "Escalas App - Redefinição de senha",
+        emailHtml,
+      );
+
+      return { success: true };
+    }),
+
+  // Redefinir senha com token
+  resetPassword: publicProcedure
+    .input(
+      z.object({
+        token: z.string(),
+        password: z.string().min(6),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const record = await ctx.db.verificationToken.findUnique({
+        where: { token: input.token },
+      });
+
+      if (!record) {
+        throw new Error("Token inválido ou expirado.");
+      }
+
+      if (record.expires < new Date()) {
+        await ctx.db.verificationToken.delete({ where: { token: input.token } });
+        throw new Error("Token expirado. Solicite uma nova redefinição.");
+      }
+
+      if (!record.identifier.startsWith("password-reset:")) {
+        throw new Error("Token inválido.");
+      }
+
+      const email = record.identifier.replace("password-reset:", "");
+
+      const hashedPassword = await hash(input.password, 10);
+
+      await ctx.db.user.update({
+        where: { email },
+        data: { password: hashedPassword },
+      });
+
+      await ctx.db.verificationToken.delete({ where: { token: input.token } });
+
+      return { success: true };
+    }),
 });
